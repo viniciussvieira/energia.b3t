@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kanvira - Participar do Bolão</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background-color: #f4f5f7; padding: 20px; }
+        .container { max-width: 400px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        h2 { color: #172b4d; text-align: center; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; color: #5e6c84; }
+        input { width: 100%; padding: 10px; border: 2px solid #dfe1e6; border-radius: 4px; box-sizing: border-box; }
+        .placar-container { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+        .placar-container input { width: 45%; text-align: center; font-size: 18px; font-weight: bold;}
+        .placar-container span { font-weight: bold; font-size: 20px; color: #5e6c84; }
+        button { width: 100%; padding: 12px; background-color: #00875a; color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; margin-top: 10px;}
+        button:hover { background-color: #006644; }
+        #mensagem { margin-top: 15px; text-align: center; font-weight: bold; }
+        .sucesso { color: green; }
+        .erro { color: red; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Fazer meu Palpite</h2>
+    <form id="formAposta">
+        <div class="form-group">
+            <label for="issue_key">Código do Bolão (Ex: KAN-1)</label>
+            <input type="text" id="issue_key" required placeholder="KAN-1" style="text-transform: uppercase;">
+        </div>
+        
+        <div class="form-group">
+            <label for="nome_usuario">Seu Nome</label>
+            <input type="text" id="nome_usuario" required placeholder="Ex: Renan">
+        </div>
+
+        <label>Qual será o placar?</label>
+        <div class="placar-container form-group">
+            <input type="number" id="gols_time_a" required min="0" placeholder="Time A">
+            <span>X</span>
+            <input type="number" id="gols_time_b" required min="0" placeholder="Time B">
+        </div>
+
+        <button type="submit">Enviar Aposta</button>
+    </form>
+    
+    <div id="mensagem"></div>
+</div>
+
+<script>
+    document.getElementById('formAposta').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const mensagemDiv = document.getElementById('mensagem');
+        const issueKey = document.getElementById('issue_key').value.toUpperCase();
+        
+        const payload = {
+            nome_usuario: document.getElementById('nome_usuario').value,
+            gols_time_a: parseInt(document.getElementById('gols_time_a').value),
+            gols_time_b: parseInt(document.getElementById('gols_time_b').value)
+        };
+
+        try {
+            // A API usa o código do ticket direto na URL da rota
+            const response = await fetch(`http://127.0.0.1:8000/api/v1/tickets/${issueKey}/apostas`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+                mensagemDiv.textContent = "Aposta registrada com sucesso! Boa sorte.";
+                mensagemDiv.className = "sucesso";
+                document.getElementById('formAposta').reset();
+            } else {
+                mensagemDiv.textContent = result.detail || "Erro ao registrar aposta.";
+                mensagemDiv.className = "erro";
+            }
+        } catch (error) {
+            mensagemDiv.textContent = "Erro de conexão com o Kanvira.";
+            mensagemDiv.className = "erro";
+        }
+    });
+</script>
+
+</body>
+</html>
