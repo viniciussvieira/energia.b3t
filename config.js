@@ -1,4 +1,4 @@
-// Configuração compartilhada pelas páginas do energia.carvalho.
+// Configuração compartilhada pelas páginas do Energia.CARVALHO.
 
 // Endereço da API online (Render). Se o Render der outro nome ao serviço, troque aqui.
 const API_ONLINE = 'https://kanvira-api.onrender.com/api/v1';
