@@ -239,24 +239,21 @@ def odd_do_resultado(bolao: models.BolaoIssue, gols_a: int, gols_b: int) -> floa
     return bolao.odd_empate
 
 
-@app.put("/api/v1/tickets/{issue_key}/odds", response_model=schemas.BolaoResponse)
-def editar_odds(
+@app.put("/api/v1/tickets/{issue_key}", response_model=schemas.BolaoResponse)
+def editar_bolao(
     issue_key: str,
-    odds: schemas.Odds,
+    dados: schemas.BolaoEdicao,
     db: Session = Depends(get_db),
-    usuario: models.Usuario = Depends(usuario_atual),
+    admin: models.Usuario = Depends(admin_atual),
 ):
-    """Admin altera as ODDs. Vale só para palpites novos: os já feitos mantêm a ODD da hora da aposta."""
-    if not usuario.is_admin:
-        raise HTTPException(status_code=403, detail="Só o administrador pode editar as ODDs.")
+    """Admin altera nomes, escudos e ODDs de um bolão já criado.
+    ODDs novas valem só para palpites novos: os já feitos mantêm a ODD da hora da aposta."""
     bolao = db.query(models.BolaoIssue).filter(models.BolaoIssue.issue_key == issue_key.upper()).first()
     if not bolao:
         raise HTTPException(status_code=404, detail="Card de bolão não encontrado.")
 
-    bolao.odd_casa = odds.odd_casa
-    bolao.odd_empate = odds.odd_empate
-    bolao.odd_fora = odds.odd_fora
-    bolao.odd_placar = odds.odd_placar
+    for campo, valor in dados.model_dump().items():
+        setattr(bolao, campo, valor)
     db.commit()
     db.refresh(bolao)
     return bolao

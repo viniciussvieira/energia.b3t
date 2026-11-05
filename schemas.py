@@ -51,12 +51,20 @@ class Odds(BaseModel):
 
 
 # --- Schemas de Bolão ---
-class BolaoCreate(Odds):
+class BolaoEdicao(Odds):
+    """Tudo que o admin pode mudar num bolão já criado: times, escudos e ODDs."""
     time_a: str = Field(..., min_length=2, max_length=50)
     time_b: str = Field(..., min_length=2, max_length=50)
-    data_encerramento: datetime
     escudo_a: Optional[str] = Field(None, max_length=500)
     escudo_b: Optional[str] = Field(None, max_length=500)
+
+    @field_validator('time_a', 'time_b')
+    @classmethod
+    def sem_espacos_sobrando(cls, v):
+        v = v.strip()
+        if len(v) < 2:
+            raise ValueError('O nome do time precisa ter pelo menos 2 letras.')
+        return v
 
     @field_validator('escudo_a', 'escudo_b')
     @classmethod
@@ -65,6 +73,9 @@ class BolaoCreate(Odds):
         if v and not v.startswith('https://a.espncdn.com/'):
             raise ValueError('Escudo inválido.')
         return v or None
+
+class BolaoCreate(BolaoEdicao):
+    data_encerramento: datetime
 
     @field_validator('data_encerramento')
     @classmethod

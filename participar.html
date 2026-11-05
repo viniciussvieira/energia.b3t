@@ -399,6 +399,17 @@
         .btn-editar-odds:hover { color: var(--accent); }
 
         .form-odds { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+        .rotulo-edicao { font-size: 0.82em; font-weight: 600; color: var(--text-muted); margin-bottom: -4px; }
+        .form-editar input[type="text"] {
+            width: 100%;
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px 14px;
+            color: var(--text-main);
+            font-size: 0.95em;
+        }
+        .form-editar input[type="text"]:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.2); }
         .form-odds .odds input { font-size: 1em; padding: 8px 4px; }
         .form-odds .linha-botoes { display: flex; gap: 8px; }
         .form-odds .linha-botoes .btn { flex: 1; padding: 8px 12px; }
@@ -490,6 +501,7 @@
     </footer>
 
 <script src="config.js"></script>
+<script src="busca-times.js"></script>
 <script>
 
     // --- Sessão ---
@@ -581,27 +593,55 @@
         </div>`;
     }
 
-    function htmlAdminOdds(b) {
-        const campo = (nome, rotulo, valor) => `
+    function htmlAdminEditar(b) {
+        const k = esc(b.issue_key);
+        const odd = (nome, rotulo, valor) => `
             <div class="odd"><small>${esc(rotulo)}</small>
                 <input type="number" name="${nome}" min="1.01" step="0.01" inputmode="decimal" value="${valor != null ? fmtOdd(valor) : ''}" aria-label="ODD ${esc(rotulo)}" required>
             </div>`;
         return `<div class="admin-odds">
-            <button type="button" class="btn-editar-odds"><i class="fas fa-pen"></i> Editar ODDs</button>
-            <form class="form-odds" data-key="${esc(b.issue_key)}" novalidate hidden>
+            <button type="button" class="btn-editar-odds"><i class="fas fa-pen"></i> Editar bolão</button>
+            <form class="form-odds form-editar" data-key="${k}" novalidate hidden>
+                <label class="rotulo-edicao" for="edit-a-${k}">Time mandante</label>
+                <div class="slot-edicao" data-lado="a"></div>
+                <label class="rotulo-edicao" for="edit-b-${k}">Time visitante</label>
+                <div class="slot-edicao" data-lado="b"></div>
+                <span class="rotulo-edicao">ODDs</span>
                 <div class="odds">
-                    ${campo('odd_casa', b.time_a, b.odd_casa)}
-                    ${campo('odd_empate', 'Empate', b.odd_empate)}
-                    ${campo('odd_fora', b.time_b, b.odd_fora)}
-                    ${campo('odd_placar', 'Placar exato', b.odd_placar)}
+                    ${odd('odd_casa', 'Mandante', b.odd_casa)}
+                    ${odd('odd_empate', 'Empate', b.odd_empate)}
+                    ${odd('odd_fora', 'Visitante', b.odd_fora)}
+                    ${odd('odd_placar', 'Placar exato', b.odd_placar)}
                 </div>
-                <span class="status" style="text-align:left">Vale só para os palpites novos. Quem já apostou mantém a ODD da hora da aposta.</span>
+                <span class="status" style="text-align:left">Altera este mesmo bolão (${k}); os palpites continuam. ODDs novas valem só para palpites novos.</span>
                 <div class="linha-botoes">
                     <button type="button" class="btn-secundario cancelar-odds">Cancelar</button>
-                    <button type="submit" class="btn"><i class="fas fa-check"></i> Salvar ODDs</button>
+                    <button type="submit" class="btn"><i class="fas fa-check"></i> Salvar</button>
                 </div>
             </form>
         </div>`;
+    }
+
+    // Campos de time (com busca de escudo) de cada formulário de edição aberto
+    const camposEdicao = new WeakMap();
+
+    function abrirEdicao(form) {
+        if (!camposEdicao.has(form)) {
+            const b = boloesPorKey[form.dataset.key];
+            const campos = {};
+            form.querySelectorAll('.slot-edicao').forEach(slot => {
+                const lado = slot.dataset.lado;
+                slot.innerHTML = BuscaTime.html({
+                    id: `edit-${lado}-${b.issue_key}`,
+                    nome: lado === 'a' ? b.time_a : b.time_b,
+                    escudo: lado === 'a' ? b.escudo_a : b.escudo_b,
+                });
+                campos[lado] = BuscaTime.ativar(slot.querySelector('.busca-wrap'), { api });
+            });
+            camposEdicao.set(form, campos);
+        }
+        form.hidden = false;
+        form.querySelector('input').focus();
     }
 
     // Se a imagem falhar (ESPN fora do ar), some com ela e fica só o nome
@@ -654,7 +694,7 @@
             </div>` : ''}
             ${htmlOdds(b, b.minha_aposta ? resultadoDo(b.minha_aposta.gols_time_a, b.minha_aposta.gols_time_b) : null)}
             <div class="corpo">${corpo}</div>
-            ${isAdmin ? htmlAdminOdds(b) : ''}
+            ${isAdmin ? htmlAdminEditar(b) : ''}
         </article>`;
     }
 
@@ -702,8 +742,7 @@
         const editar = e.target.closest('.btn-editar-odds');
         if (editar) {
             const f = editar.nextElementSibling;
-            f.hidden = !f.hidden;
-            if (!f.hidden) f.querySelector('input').focus();
+            if (f.hidden) abrirEdicao(f); else f.hidden = true;
             return;
         }
         const cancelar = e.target.closest('.cancelar-odds');
@@ -723,13 +762,20 @@
         if (form) atualizarRetorno(form);
     });
 
-    // Admin salva novas ODDs
+    // Admin salva a edição do bolão (nomes, escudos e ODDs) no mesmo card
     lista.addEventListener('submit', async e => {
         const form = e.target;
         if (!form.classList.contains('form-odds')) return;
         e.preventDefault();
         const status = form.querySelector('.status');
-        const odds = {};
+        const campos = camposEdicao.get(form);
+        if (campos.a.nome.length < 2 || campos.b.nome.length < 2) {
+            status.textContent = 'Informe o nome dos dois times.'; status.className = 'status error'; return;
+        }
+        const odds = {
+            time_a: campos.a.nome, time_b: campos.b.nome,
+            escudo_a: campos.a.escudo, escudo_b: campos.b.escudo,
+        };
         for (const nome of ['odd_casa', 'odd_empate', 'odd_fora', 'odd_placar']) {
             const v = parseFloat(String(form[nome].value).replace(',', '.'));
             if (!(v >= 1.01)) { status.textContent = 'Todas as ODDs precisam ser no mínimo 1.01.'; status.className = 'status error'; return; }
@@ -738,9 +784,9 @@
         const botao = form.querySelector('button[type="submit"]');
         botao.disabled = true;
         try {
-            const { ok, dados } = await api(`/tickets/${encodeURIComponent(form.dataset.key)}/odds`, { method: 'PUT', body: JSON.stringify(odds) });
+            const { ok, dados } = await api(`/tickets/${encodeURIComponent(form.dataset.key)}`, { method: 'PUT', body: JSON.stringify(odds) });
             if (ok) return carregarBoloes();
-            status.textContent = typeof dados.detail === 'string' ? dados.detail : 'Verifique as ODDs.';
+            status.textContent = typeof dados.detail === 'string' ? dados.detail : 'Verifique os campos.';
             status.className = 'status error';
         } catch (err) {
             status.textContent = 'Erro de conexão com o servidor.';

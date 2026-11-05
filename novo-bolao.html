@@ -409,64 +409,6 @@
         }
         .secao-titulo i { color: var(--accent); }
 
-        /* --- Busca de time com escudo --- */
-        .busca-wrap { position: relative; }
-        .busca-wrap input { padding-left: 52px !important; }
-        .escudo-preview {
-            position: absolute;
-            left: 10px;
-            top: 50%;
-            transform: translateY(-50%);
-            width: 32px;
-            height: 32px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--text-muted);
-            pointer-events: none;
-        }
-        .escudo-preview img { max-width: 32px; max-height: 32px; object-fit: contain; }
-        .sugestoes {
-            position: absolute;
-            top: calc(100% + 6px);
-            left: 0;
-            right: 0;
-            list-style: none;
-            background: var(--bg-secondary);
-            border: 1px solid var(--border);
-            border-radius: 10px;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
-            max-height: 300px;
-            overflow-y: auto;
-            z-index: 20;
-            padding: 4px;
-        }
-        .sugestoes li {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 8px 10px;
-            border-radius: 8px;
-            cursor: pointer;
-        }
-        .sugestoes li.ativo, .sugestoes li:hover { background: rgba(88, 166, 255, 0.12); }
-        .sugestoes li img, .sugestoes li .sem-escudo {
-            width: 32px;
-            height: 32px;
-            object-fit: contain;
-            flex-shrink: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--text-muted);
-        }
-        .sugestoes li span { display: flex; flex-direction: column; line-height: 1.25; min-width: 0; }
-        .sugestoes li small { color: var(--text-muted); font-size: 0.8em; }
-        .sugestoes li.info { cursor: default; color: var(--text-muted); font-size: 0.88em; }
-        .sugestoes li.info:hover { background: transparent; }
-        .form-card .btn { width: 100%; }
-        .bloqueado { text-align: center; color: var(--text-muted); }
-        .bloqueado .btn { margin-top: 14px; }
     </style>
 </head>
 <body>
@@ -491,21 +433,11 @@
         <form class="form-card" id="formBolao" novalidate hidden>
             <div class="form-group">
                 <label for="time_a">Time mandante</label>
-                <div class="busca-wrap" data-lado="a">
-                    <span class="escudo-preview" aria-hidden="true"><i class="fas fa-shield-halved"></i></span>
-                    <input type="text" id="time_a" required minlength="2" maxlength="50" placeholder="Digite para buscar, ex: Flamengo"
-                           autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="sug-a">
-                    <ul class="sugestoes" id="sug-a" role="listbox" hidden></ul>
-                </div>
+                <div class="slot-time" data-lado="a" data-placeholder="Digite para buscar, ex: Flamengo"></div>
             </div>
             <div class="form-group">
                 <label for="time_b">Time visitante</label>
-                <div class="busca-wrap" data-lado="b">
-                    <span class="escudo-preview" aria-hidden="true"><i class="fas fa-shield-halved"></i></span>
-                    <input type="text" id="time_b" required minlength="2" maxlength="50" placeholder="Digite para buscar, ex: Vasco"
-                           autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="sug-b">
-                    <ul class="sugestoes" id="sug-b" role="listbox" hidden></ul>
-                </div>
+                <div class="slot-time" data-lado="b" data-placeholder="Digite para buscar, ex: Vasco"></div>
             </div>
             <span class="hint" style="margin-top:-10px">Escolha o time na lista para usar o escudo. Se não achar, pode digitar o nome mesmo.</span>
             <div class="form-group">
@@ -549,6 +481,7 @@
     </footer>
 
 <script src="config.js"></script>
+<script src="busca-times.js"></script>
 <script>
 
     function lerSessao() {
@@ -608,7 +541,7 @@
                 method: 'POST',
                 body: JSON.stringify({
                     time_a, time_b,
-                    escudo_a: escudos.a, escudo_b: escudos.b,
+                    escudo_a: campos.a.escudo, escudo_b: campos.b.escudo,
                     ...odds,
                     data_encerramento: data.toISOString(),
                 }),
@@ -616,8 +549,8 @@
             if (ok) {
                 setStatus(`Card ${dados.issue_key} criado: ${dados.time_a} x ${dados.time_b}!`, 'success');
                 form.reset();
-                definirEscudo('a', null);
-                definirEscudo('b', null);
+                campos.a.limpar();
+                campos.b.limpar();
                 atualizarRotulosOdds();
             } else {
                 setStatus(typeof dados.detail === 'string' ? dados.detail : 'Verifique os campos.', 'error');
@@ -628,91 +561,12 @@
         botao.disabled = false;
     });
 
-    // --- Busca de time com escudo ---
-    const escudos = { a: null, b: null };
-    const escSeguro = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-
-    function definirEscudo(lado, url) {
-        escudos[lado] = url;
-        const preview = document.querySelector(`.busca-wrap[data-lado="${lado}"] .escudo-preview`);
-        preview.innerHTML = url ? `<img src="${escSeguro(url)}" alt="">` : '<i class="fas fa-shield-halved"></i>';
-    }
-
-    document.querySelectorAll('.busca-wrap').forEach(wrap => {
-        const lado = wrap.dataset.lado;
-        const input = wrap.querySelector('input');
-        const lista = wrap.querySelector('.sugestoes');
-        let resultados = [], ativo = -1, timer = null, ultimaBusca = 0;
-
-        const fechar = () => { lista.hidden = true; input.setAttribute('aria-expanded', 'false'); ativo = -1; };
-        const abrir = () => { lista.hidden = false; input.setAttribute('aria-expanded', 'true'); };
-
-        function marcarAtivo(i) {
-            ativo = i;
-            lista.querySelectorAll('li[data-i]').forEach(li => {
-                const sel = +li.dataset.i === i;
-                li.classList.toggle('ativo', sel);
-                li.setAttribute('aria-selected', sel);
-                if (sel) li.scrollIntoView({ block: 'nearest' });
-            });
-        }
-
-        function escolher(i) {
-            const t = resultados[i];
-            if (!t) return;
-            input.value = t.nome;
-            definirEscudo(lado, t.escudo);
-            fechar();
-        }
-
-        function mostrar(times, termo) {
-            resultados = times;
-            if (!times.length) {
-                lista.innerHTML = `<li class="info">Nenhum time encontrado para "${escSeguro(termo)}". Pode seguir com o nome digitado.</li>`;
-            } else {
-                lista.innerHTML = times.map((t, i) => `
-                    <li role="option" data-i="${i}" aria-selected="false">
-                        ${t.escudo ? `<img src="${escSeguro(t.escudo)}" alt="" loading="lazy">` : '<i class="fas fa-shield-halved sem-escudo"></i>'}
-                        <span>${escSeguro(t.nome)}<small>${escSeguro(t.liga)}</small></span>
-                    </li>`).join('');
-            }
-            abrir();
-            marcarAtivo(times.length ? 0 : -1);
-        }
-
-        input.addEventListener('input', () => {
-            definirEscudo(lado, null);  // mudou o nome: o escudo escolhido antes não vale mais
-            clearTimeout(timer);
-            const termo = input.value.trim();
-            if (termo.length < 2) return fechar();
-            timer = setTimeout(async () => {
-                const id = ++ultimaBusca;
-                lista.innerHTML = '<li class="info">Buscando...</li>';
-                abrir();
-                try {
-                    const { ok, dados } = await api(`/times/busca?q=${encodeURIComponent(termo)}`);
-                    if (id !== ultimaBusca) return;  // chegou resposta de uma busca antiga
-                    mostrar(ok ? dados : [], termo);
-                } catch (err) {
-                    if (id === ultimaBusca) lista.innerHTML = '<li class="info">Não foi possível buscar agora. Pode digitar o nome.</li>';
-                }
-            }, 300);
-        });
-
-        input.addEventListener('keydown', e => {
-            if (lista.hidden || !resultados.length) return;
-            if (e.key === 'ArrowDown') { e.preventDefault(); marcarAtivo(Math.min(ativo + 1, resultados.length - 1)); }
-            else if (e.key === 'ArrowUp') { e.preventDefault(); marcarAtivo(Math.max(ativo - 1, 0)); }
-            else if (e.key === 'Enter' && ativo >= 0) { e.preventDefault(); escolher(ativo); }
-            else if (e.key === 'Escape') fechar();
-        });
-
-        // mousedown (e não click) para escolher antes do input perder o foco
-        lista.addEventListener('mousedown', e => {
-            const li = e.target.closest('li[data-i]');
-            if (li) { e.preventDefault(); escolher(+li.dataset.i); }
-        });
-        input.addEventListener('blur', () => setTimeout(fechar, 120));
+    // --- Busca de time com escudo (busca-times.js) ---
+    const campos = {};
+    document.querySelectorAll('.slot-time').forEach(slot => {
+        const lado = slot.dataset.lado;
+        slot.innerHTML = BuscaTime.html({ id: `time_${lado}`, placeholder: slot.dataset.placeholder });
+        campos[lado] = BuscaTime.ativar(slot.querySelector('.busca-wrap'), { api, aoMudar: () => setTimeout(atualizarRotulosOdds) });
     });
 
     // Os rótulos das ODDs mostram o nome dos times ("Vitória Flamengo")
@@ -722,10 +576,6 @@
         document.getElementById('lbl-odd-casa').textContent = a ? `Vitória ${a}` : 'Vitória do mandante';
         document.getElementById('lbl-odd-fora').textContent = b ? `Vitória ${b}` : 'Vitória do visitante';
     }
-    document.getElementById('time_a').addEventListener('input', atualizarRotulosOdds);
-    document.getElementById('time_b').addEventListener('input', atualizarRotulosOdds);
-    document.querySelectorAll('.sugestoes').forEach(l => l.addEventListener('mousedown', () => setTimeout(atualizarRotulosOdds)));
-    document.querySelectorAll('.busca-wrap input').forEach(i => i.addEventListener('keydown', e => { if (e.key === 'Enter') setTimeout(atualizarRotulosOdds); }));
 
     async function iniciar() {
         try {
