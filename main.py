@@ -2,6 +2,7 @@ from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 import models, schemas
+from auth import criar_token, gerar_hash_senha, usuario_atual, verificar_senha
 from database import engine, get_db
 from datetime import datetime
 
@@ -23,7 +24,49 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-# ... (resto do código)
+
+SALDO_INICIAL_JC = 1000  # Jussana Coins de boas-vindas
+
+
+# --- Autenticação ---
+@app.post("/api/v1/auth/cadastro", response_model=schemas.TokenResponse, status_code=status.HTTP_201_CREATED)
+def cadastrar_usuario(dados: schemas.UsuarioCadastro, db: Session = Depends(get_db)):
+    username = dados.username.strip().lower()
+    if db.query(models.Usuario).filter(models.Usuario.username == username).first():
+        raise HTTPException(status_code=409, detail="Esse nome de usuário já está em uso.")
+
+    # O primeiro usuário cadastrado vira administrador (quem cria os cards)
+    primeiro = db.query(models.Usuario).first() is None
+
+    usuario = models.Usuario(
+        username=username,
+        senha_hash=gerar_hash_senha(dados.senha),
+        saldo=SALDO_INICIAL_JC,
+        is_admin=primeiro,
+    )
+    try:
+        db.add(usuario)
+        db.commit()
+        db.refresh(usuario)
+    except Exception:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Erro interno ao criar a conta.")
+
+    return {"access_token": criar_token(usuario.id), "usuario": usuario}
+
+
+@app.post("/api/v1/auth/login", response_model=schemas.TokenResponse)
+def login(dados: schemas.UsuarioLogin, db: Session = Depends(get_db)):
+    usuario = db.query(models.Usuario).filter(models.Usuario.username == dados.username.strip().lower()).first()
+    if not usuario or not verificar_senha(dados.senha, usuario.senha_hash):
+        raise HTTPException(status_code=401, detail="Usuário ou senha incorretos.")
+    return {"access_token": criar_token(usuario.id), "usuario": usuario}
+
+
+@app.get("/api/v1/auth/me", response_model=schemas.UsuarioResponse)
+def meu_perfil(usuario: models.Usuario = Depends(usuario_atual)):
+    return usuario
+
 
 def gerar_issue_key(db: Session, prefixo: str = "KAN") -> str:
     """Gerar a chave sequencial estilo Kanvira (ex: KAN-1, KAN-2)"""
@@ -79,4 +122,4 @@ def registrar_aposta(issue_key: str, aposta: schemas.ApostaCreate, db: Session =
         return nova_aposta
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail="Erro interno ao registrar aposta.")
+        raise HTTPException(status_code=500, detail="Erro interno ao registrar aposta.")

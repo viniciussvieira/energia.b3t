@@ -1,5 +1,5 @@
 import datetime
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
+from sqlalchemy import Boolean, Column, Integer, String, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 from database import Base
 
@@ -29,3 +29,13 @@ class Aposta(Base):
     # Chave Estrangeira ligando a aposta ao Bolão correto
     bolao_id = Column(Integer, ForeignKey("bolao_issues.id"))
     bolao = relationship("BolaoIssue", back_populates="apostas")
+
+class Usuario(Base):
+    __tablename__ = "usuarios"
+
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String, unique=True, index=True, nullable=False)
+    senha_hash = Column(String, nullable=False)
+    saldo = Column(Integer, default=1000)  # Saldo em Jussana Coins (JC)
+    is_admin = Column(Boolean, default=False)  # Admin pode criar cards de bolão
+    criado_em = Column(DateTime, default=datetime.datetime.utcnow)

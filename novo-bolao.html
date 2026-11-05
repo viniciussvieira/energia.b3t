@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kanvira - Novo Bolão</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f5f7; padding: 20px; }
+        .container { max-width: 500px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        h2 { color: #172b4d; text-align: center; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; color: #5e6c84; }
+        input { width: 100%; padding: 10px; border: 2px solid #dfe1e6; border-radius: 4px; box-sizing: border-box; }
+        input:focus { border-color: #4c9aff; outline: none; }
+        button { width: 100%; padding: 12px; background-color: #0052cc; color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 16px; }
+        button:hover { background-color: #0047b3; }
+        #mensagem { margin-top: 15px; text-align: center; font-weight: bold; }
+        .sucesso { color: green; }
+        .erro { color: red; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Novo Card de Bolão</h2>
+    <form id="formBolao">
+        <div class="form-group">
+            <label for="time_a">Time Mandante (Time A)</label>
+            <input type="text" id="time_a" required placeholder="Ex: Time A">
+        </div>
+        
+        <div class="form-group">
+            <label for="time_b">Time Visitante (Time B)</label>
+            <input type="text" id="time_b" required placeholder="Ex: Time B">
+        </div>
+
+        <div class="form-group">
+            <label for="data_encerramento">Fechamento das Apostas</label>
+            <input type="datetime-local" id="data_encerramento" required>
+        </div>
+
+        <button type="submit">Criar Bolão</button>
+    </form>
+    
+    <div id="mensagem"></div>
+</div>
+
+<script>
+    document.getElementById('formBolao').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const mensagemDiv = document.getElementById('mensagem');
+        mensagemDiv.textContent = "Processando...";
+        mensagemDiv.className = "";
+
+        const payload = {
+            time_a: document.getElementById('time_a').value,
+            time_b: document.getElementById('time_b').value,
+            data_encerramento: document.getElementById('data_encerramento').value + ":00"
+        };
+
+        try {
+            const response = await fetch('http://127.0.0.1:8000/api/v1/tickets/bolao', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                mensagemDiv.textContent = `Card ${data.issue_key} criado: ${data.time_a} x ${data.time_b}!`;
+                mensagemDiv.className = "sucesso";
+                document.getElementById('formBolao').reset();
+            } else {
+                mensagemDiv.textContent = "Erro. Verifique se o fechamento é uma data futura.";
+                mensagemDiv.className = "erro";
+            }
+        } catch (error) {
+            mensagemDiv.textContent = "Erro de conexão com a API do Kanvira.";
+            mensagemDiv.className = "erro";
+        }
+    });
+</script>
+
+</body>
+</html>

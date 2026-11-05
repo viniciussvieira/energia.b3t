@@ -36,3 +36,30 @@ class BolaoResponse(BolaoCreate):
 
     class Config:
         from_attributes = True
+
+# --- Schemas de Usuário / Autenticação ---
+class UsuarioCadastro(BaseModel):
+    username: str = Field(..., min_length=3, max_length=30, pattern=r"^[A-Za-z0-9_.]+$")
+    senha: str = Field(..., min_length=6, max_length=128)
+
+
+class UsuarioLogin(BaseModel):
+    username: str
+    senha: str
+
+
+class UsuarioResponse(BaseModel):
+    id: int
+    username: str
+    saldo: int
+    is_admin: bool
+    criado_em: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    usuario: UsuarioResponse

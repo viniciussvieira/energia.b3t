@@ -3,84 +3,572 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kanvira - Novo Bolão</title>
+    <title>Kanvira | Bolão entre amigos</title>
+    <meta name="description" content="Bolão entre amigos com Jussana Coins. Sem dinheiro de verdade, só a resenha.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f5f7; padding: 20px; }
-        .container { max-width: 500px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
-        h2 { color: #172b4d; text-align: center; }
-        .form-group { margin-bottom: 15px; }
-        label { display: block; margin-bottom: 5px; font-weight: bold; color: #5e6c84; }
-        input { width: 100%; padding: 10px; border: 2px solid #dfe1e6; border-radius: 4px; box-sizing: border-box; }
-        input:focus { border-color: #4c9aff; outline: none; }
-        button { width: 100%; padding: 12px; background-color: #0052cc; color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 16px; }
-        button:hover { background-color: #0047b3; }
-        #mensagem { margin-top: 15px; text-align: center; font-weight: bold; }
-        .sucesso { color: green; }
-        .erro { color: red; }
+        :root {
+            --bg-primary: #0D1117;
+            --bg-secondary: #161B22;
+            --text-main: #E6EDF3;
+            --text-muted: #8B949E;
+            --accent: #58A6FF;
+            --accent-hover: #79B8FF;
+            --success: #3FB950;
+            --error: #F85149;
+            --border: #30363d;
+            --nav-bg: #010409;
+            --nav-height: 70px;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            background: var(--bg-primary);
+            color: var(--text-main);
+            font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        button, input { font-family: inherit; }
+
+        a:focus-visible, button:focus-visible {
+            outline: 2px solid var(--accent);
+            outline-offset: 3px;
+            border-radius: 6px;
+        }
+
+        /* --- Navegação --- */
+        nav {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%;
+            height: var(--nav-height);
+            background: var(--nav-bg);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 5%;
+            z-index: 10;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.4);
+            border-bottom: 1px solid var(--border);
+        }
+
+        nav .logo {
+            color: var(--text-main);
+            font-weight: 700;
+            font-size: 1.3em;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        nav .logo i { color: var(--accent); }
+
+        .coin-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(88, 166, 255, 0.1);
+            color: var(--accent);
+            border: 1px solid rgba(88, 166, 255, 0.3);
+            border-radius: 999px;
+            padding: 4px 14px;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+
+        /* --- Hero + Card de login --- */
+        main {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: calc(var(--nav-height) + 40px) 6% 60px;
+        }
+
+        .hero {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 70px;
+            width: 100%;
+            max-width: 1100px;
+        }
+
+        .hero-texto { max-width: 520px; }
+
+        .hero-texto h1 {
+            font-size: 2.8em;
+            line-height: 1.2;
+            margin-bottom: 10px;
+        }
+
+        .hero-texto h3 {
+            color: var(--accent);
+            font-size: 1.2em;
+            margin-bottom: 25px;
+        }
+
+        .hero-texto h3 span { color: var(--text-muted); margin: 0 4px; }
+
+        .hero-texto p {
+            color: var(--text-muted);
+            line-height: 1.8em;
+            margin-bottom: 18px;
+        }
+
+        .hero-texto p strong { color: var(--text-main); font-weight: 600; }
+
+        .tags {
+            list-style: none;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 6px;
+        }
+
+        .tags li {
+            background: rgba(88, 166, 255, 0.1);
+            color: var(--accent);
+            border: 1px solid rgba(88, 166, 255, 0.3);
+            border-radius: 999px;
+            padding: 4px 12px;
+            font-size: 0.85em;
+            font-weight: 500;
+        }
+
+        .tags li i { margin-right: 6px; }
+
+        /* --- Card de autenticação --- */
+        .auth-card {
+            width: 100%;
+            max-width: 420px;
+            flex-shrink: 0;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .tab {
+            flex: 1;
+            background: transparent;
+            border: none;
+            border-bottom: 2px solid transparent;
+            color: var(--text-muted);
+            padding: 16px 10px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: color 0.3s, border-color 0.3s, background 0.3s;
+        }
+
+        .tab:hover { color: var(--text-main); }
+
+        .tab[aria-selected="true"] {
+            color: var(--accent);
+            border-bottom-color: var(--accent);
+            background: rgba(88, 166, 255, 0.04);
+        }
+
+        .auth-form {
+            padding: 28px 30px 30px;
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+
+        .auth-form[hidden] { display: none; }
+
+        .auth-form h2 { font-size: 1.4em; }
+
+        .auth-form .sub {
+            color: var(--text-muted);
+            font-size: 0.92em;
+            margin-top: -12px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .form-group label {
+            font-size: 0.9em;
+            font-weight: 600;
+        }
+
+        .input-wrap { position: relative; }
+
+        .input-wrap > i {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            font-size: 0.9em;
+            pointer-events: none;
+        }
+
+        .form-group input {
+            width: 100%;
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px 44px 12px 40px;
+            color: var(--text-main);
+            font-size: 1em;
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+
+        .form-group input::placeholder { color: #6E7681; }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.2);
+        }
+
+        .toggle-senha {
+            position: absolute;
+            right: 6px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 34px;
+            height: 34px;
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            border-radius: 6px;
+        }
+
+        .toggle-senha:hover { color: var(--accent); }
+
+        .hint {
+            color: var(--text-muted);
+            font-size: 0.8em;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            background: var(--accent);
+            color: var(--bg-primary);
+            border: 2px solid var(--accent);
+            padding: 11px 25px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 1em;
+            cursor: pointer;
+            transition: 0.3s;
+            width: 100%;
+        }
+
+        .btn:hover {
+            background: var(--accent-hover);
+            border-color: var(--accent-hover);
+            box-shadow: 0 0 12px rgba(88, 166, 255, 0.3);
+        }
+
+        .btn:disabled { opacity: 0.6; cursor: wait; }
+
+        .troca {
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.9em;
+        }
+
+        .troca button {
+            background: none;
+            border: none;
+            color: var(--accent);
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 1em;
+        }
+
+        .troca button:hover { text-decoration: underline; }
+
+        .form-status {
+            min-height: 1.2em;
+            font-size: 0.92em;
+            text-align: center;
+        }
+
+        .form-status.success { color: var(--success); }
+        .form-status.error { color: var(--error); }
+
+        /* --- Rodapé --- */
+        footer {
+            background: var(--nav-bg);
+            color: var(--text-muted);
+            text-align: center;
+            padding: 24px 20px;
+            border-top: 1px solid var(--border);
+            font-size: 0.9em;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .btn, .tab { transition: none; }
+        }
+
+        /* --- Responsividade --- */
+        @media (max-width: 900px) {
+            .hero {
+                flex-direction: column;
+                gap: 36px;
+                text-align: center;
+            }
+
+            .hero-texto h1 { font-size: 2.1em; }
+            .tags { justify-content: center; }
+        }
+
+        @media (max-width: 480px) {
+            :root { --nav-height: 64px; }
+            nav { padding: 0 16px; }
+            nav .logo { font-size: 1.15em; }
+            main { padding: calc(var(--nav-height) + 28px) 16px 40px; }
+            .hero-texto h1 { font-size: 1.8em; }
+            .hero-texto h3 { font-size: 1.05em; }
+            .auth-form { padding: 24px 20px; }
+        }
     </style>
 </head>
 <body>
+    <header>
+        <nav>
+            <a href="index.html" class="logo"><i class="fas fa-futbol" aria-hidden="true"></i> Kanvira</a>
+            <span class="coin-chip"><i class="fas fa-coins" aria-hidden="true"></i> Jussana Coin</span>
+        </nav>
+    </header>
 
-<div class="container">
-    <h2>Novo Card de Bolão</h2>
-    <form id="formBolao">
-        <div class="form-group">
-            <label for="time_a">Time Mandante (Time A)</label>
-            <input type="text" id="time_a" required placeholder="Ex: Time A">
-        </div>
-        
-        <div class="form-group">
-            <label for="time_b">Time Visitante (Time B)</label>
-            <input type="text" id="time_b" required placeholder="Ex: Time B">
-        </div>
+    <main>
+        <div class="hero">
+            <div class="hero-texto">
+                <h1>Bolão da galera ⚽</h1>
+                <h3>Palpites <span>·</span> Resenha <span>·</span> Jussana Coins</h3>
+                <p>
+                    Aposte no placar dos jogos com seus amigos usando <strong>Jussana Coins (JC)</strong>,
+                    a moeda oficial do bolão. <strong>Nada de dinheiro de verdade</strong>, só a glória de
+                    subir no ranking.
+                </p>
+                <p>Crie sua conta e ganhe <strong>1.000 JC</strong> de boas-vindas.</p>
+                <ul class="tags">
+                    <li><i class="fas fa-bullseye"></i>Placar exato</li>
+                    <li><i class="fas fa-trophy"></i>Ranking</li>
+                    <li><i class="fas fa-users"></i>Só entre amigos</li>
+                </ul>
+            </div>
 
-        <div class="form-group">
-            <label for="data_encerramento">Fechamento das Apostas</label>
-            <input type="datetime-local" id="data_encerramento" required>
-        </div>
+            <div class="auth-card">
+                <div class="tabs" role="tablist">
+                    <button class="tab" id="tab-login" role="tab" aria-selected="true" aria-controls="form-login">Entrar</button>
+                    <button class="tab" id="tab-cadastro" role="tab" aria-selected="false" aria-controls="form-cadastro">Criar conta</button>
+                </div>
 
-        <button type="submit">Criar Bolão</button>
-    </form>
-    
-    <div id="mensagem"></div>
-</div>
+                <!-- LOGIN -->
+                <form class="auth-form" id="form-login" role="tabpanel" aria-labelledby="tab-login" novalidate>
+                    <h2>Bem-vindo de volta</h2>
+                    <p class="sub">Entre para ver os bolões abertos.</p>
+
+                    <div class="form-group">
+                        <label for="login-usuario">Usuário</label>
+                        <div class="input-wrap">
+                            <i class="fas fa-user" aria-hidden="true"></i>
+                            <input type="text" id="login-usuario" autocomplete="username" placeholder="seu_usuario" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="login-senha">Senha</label>
+                        <div class="input-wrap">
+                            <i class="fas fa-lock" aria-hidden="true"></i>
+                            <input type="password" id="login-senha" autocomplete="current-password" placeholder="••••••" required>
+                            <button type="button" class="toggle-senha" aria-label="Mostrar senha"><i class="fas fa-eye"></i></button>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn"><i class="fas fa-right-to-bracket"></i> Entrar</button>
+                    <p class="form-status" role="status"></p>
+                    <p class="troca">Ainda não tem conta? <button type="button" data-ir="cadastro">Cadastre-se</button></p>
+                </form>
+
+                <!-- CADASTRO -->
+                <form class="auth-form" id="form-cadastro" role="tabpanel" aria-labelledby="tab-cadastro" novalidate hidden>
+                    <h2>Criar conta</h2>
+                    <p class="sub">Leva 10 segundos. Você começa com 1.000 JC.</p>
+
+                    <div class="form-group">
+                        <label for="cad-usuario">Usuário</label>
+                        <div class="input-wrap">
+                            <i class="fas fa-user" aria-hidden="true"></i>
+                            <input type="text" id="cad-usuario" autocomplete="username" placeholder="seu_usuario" required minlength="3" maxlength="30">
+                        </div>
+                        <span class="hint">3 a 30 caracteres: letras, números, ponto ou _</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="cad-senha">Senha</label>
+                        <div class="input-wrap">
+                            <i class="fas fa-lock" aria-hidden="true"></i>
+                            <input type="password" id="cad-senha" autocomplete="new-password" placeholder="Mínimo 6 caracteres" required minlength="6">
+                            <button type="button" class="toggle-senha" aria-label="Mostrar senha"><i class="fas fa-eye"></i></button>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="cad-confirma">Confirmar senha</label>
+                        <div class="input-wrap">
+                            <i class="fas fa-lock" aria-hidden="true"></i>
+                            <input type="password" id="cad-confirma" autocomplete="new-password" placeholder="Repita a senha" required>
+                            <button type="button" class="toggle-senha" aria-label="Mostrar senha"><i class="fas fa-eye"></i></button>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn"><i class="fas fa-user-plus"></i> Criar conta</button>
+                    <p class="form-status" role="status"></p>
+                    <p class="troca">Já tem conta? <button type="button" data-ir="login">Entrar</button></p>
+                </form>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        Kanvira · Bolão entre amigos · Jussana Coin não tem valor em dinheiro
+    </footer>
 
 <script>
-    document.getElementById('formBolao').addEventListener('submit', async function(e) {
-        e.preventDefault();
-        
-        const mensagemDiv = document.getElementById('mensagem');
-        mensagemDiv.textContent = "Processando...";
-        mensagemDiv.className = "";
+    const API_URL = 'http://127.0.0.1:8000/api/v1';
+    const DESTINO_APOS_LOGIN = 'participar.html';
 
-        const payload = {
-            time_a: document.getElementById('time_a').value,
-            time_b: document.getElementById('time_b').value,
-            data_encerramento: document.getElementById('data_encerramento').value + ":00"
-        };
+    // --- Abas ---
+    const abas = {
+        login: { tab: document.getElementById('tab-login'), form: document.getElementById('form-login') },
+        cadastro: { tab: document.getElementById('tab-cadastro'), form: document.getElementById('form-cadastro') },
+    };
+
+    function mostrarAba(nome) {
+        for (const [chave, { tab, form }] of Object.entries(abas)) {
+            const ativa = chave === nome;
+            tab.setAttribute('aria-selected', ativa);
+            form.hidden = !ativa;
+        }
+        abas[nome].form.querySelector('input').focus();
+    }
+
+    abas.login.tab.addEventListener('click', () => mostrarAba('login'));
+    abas.cadastro.tab.addEventListener('click', () => mostrarAba('cadastro'));
+    document.querySelectorAll('[data-ir]').forEach(b => b.addEventListener('click', () => mostrarAba(b.dataset.ir)));
+    if (location.hash === '#cadastro') mostrarAba('cadastro');
+
+    // --- Mostrar/ocultar senha ---
+    document.querySelectorAll('.toggle-senha').forEach(botao => {
+        botao.addEventListener('click', () => {
+            const input = botao.parentElement.querySelector('input');
+            const mostrar = input.type === 'password';
+            input.type = mostrar ? 'text' : 'password';
+            botao.innerHTML = `<i class="fas fa-eye${mostrar ? '-slash' : ''}"></i>`;
+            botao.setAttribute('aria-label', mostrar ? 'Ocultar senha' : 'Mostrar senha');
+        });
+    });
+
+    // --- Helpers ---
+    function setStatus(form, texto, tipo = '') {
+        const el = form.querySelector('.form-status');
+        el.textContent = texto;
+        el.className = 'form-status ' + tipo;
+    }
+
+    function salvarSessao(dados) {
+        try {
+            localStorage.setItem('kanvira_token', dados.access_token);
+            localStorage.setItem('kanvira_usuario', JSON.stringify(dados.usuario));
+        } catch (e) { /* navegador sem storage: segue sem lembrar a sessão */ }
+    }
+
+    function mensagemErro(result, padrao) {
+        // FastAPI devolve "detail" como texto ou como lista de erros de validação
+        if (typeof result?.detail === 'string') return result.detail;
+        if (Array.isArray(result?.detail)) return 'Verifique os campos: usuário (3–30 caracteres, sem espaços) e senha (mín. 6).';
+        return padrao;
+    }
+
+    async function enviar(form, rota, payload, textoSucesso) {
+        const botao = form.querySelector('button[type="submit"]');
+        botao.disabled = true;
+        setStatus(form, 'Processando...');
 
         try {
-            const response = await fetch('http://127.0.0.1:8000/api/v1/tickets/bolao', {
+            const response = await fetch(`${API_URL}${rota}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
+                body: JSON.stringify(payload),
             });
+            const result = await response.json().catch(() => ({}));
 
             if (response.ok) {
-                const data = await response.json();
-                mensagemDiv.textContent = `Card ${data.issue_key} criado: ${data.time_a} x ${data.time_b}!`;
-                mensagemDiv.className = "sucesso";
-                document.getElementById('formBolao').reset();
+                salvarSessao(result);
+                setStatus(form, textoSucesso(result.usuario), 'success');
+                setTimeout(() => { window.location.href = DESTINO_APOS_LOGIN; }, 900);
             } else {
-                mensagemDiv.textContent = "Erro. Verifique se o fechamento é uma data futura.";
-                mensagemDiv.className = "erro";
+                setStatus(form, mensagemErro(result, 'Algo deu errado. Tente de novo.'), 'error');
+                botao.disabled = false;
             }
         } catch (error) {
-            mensagemDiv.textContent = "Erro de conexão com a API do Kanvira.";
-            mensagemDiv.className = "erro";
+            setStatus(form, 'Erro de conexão com a API do Kanvira.', 'error');
+            botao.disabled = false;
         }
+    }
+
+    // --- Login ---
+    abas.login.form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const form = e.currentTarget;
+        const username = document.getElementById('login-usuario').value.trim();
+        const senha = document.getElementById('login-senha').value;
+
+        if (!username || !senha) return setStatus(form, 'Preencha usuário e senha.', 'error');
+
+        enviar(form, '/auth/login', { username, senha },
+            u => `Olá, ${u.username}! Saldo: ${u.saldo.toLocaleString('pt-BR')} JC`);
+    });
+
+    // --- Cadastro ---
+    abas.cadastro.form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const form = e.currentTarget;
+        const username = document.getElementById('cad-usuario').value.trim();
+        const senha = document.getElementById('cad-senha').value;
+        const confirma = document.getElementById('cad-confirma').value;
+
+        if (!/^[A-Za-z0-9_.]{3,30}$/.test(username))
+            return setStatus(form, 'Usuário deve ter 3 a 30 caracteres: letras, números, ponto ou _.', 'error');
+        if (senha.length < 6) return setStatus(form, 'A senha precisa ter pelo menos 6 caracteres.', 'error');
+        if (senha !== confirma) return setStatus(form, 'As senhas não conferem.', 'error');
+
+        enviar(form, '/auth/cadastro', { username, senha },
+            u => `Conta criada! Você ganhou ${u.saldo.toLocaleString('pt-BR')} JC 🎉`);
     });
 </script>
-
 </body>
 </html>
