@@ -10,6 +10,8 @@ class BolaoIssue(Base):
     issue_key = Column(String, unique=True, index=True)  # Ex: KAN-1
     time_a = Column(String, index=True)
     time_b = Column(String, index=True)
+    escudo_a = Column(String, nullable=True)  # URL da imagem do escudo (ESPN)
+    escudo_b = Column(String, nullable=True)
     data_encerramento = Column(DateTime)  # Sempre em UTC
     status = Column(String, default="TO DO")
     criado_em = Column(DateTime, default=datetime.datetime.utcnow)

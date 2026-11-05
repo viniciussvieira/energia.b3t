@@ -192,7 +192,30 @@
             font-weight: 700;
             font-size: 1.15em;
             overflow-wrap: anywhere;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
         }
+
+        .time img, .escudo-vazio {
+            width: 56px;
+            height: 56px;
+            object-fit: contain;
+            filter: drop-shadow(0 2px 6px rgba(0,0,0,0.4));
+        }
+
+        .escudo-vazio {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.2em;
+            color: var(--border);
+            filter: none;
+        }
+
+        .confronto { align-items: start; }
+        .confronto .vs { margin-top: 18px; }
 
         .vs { color: var(--text-muted); font-weight: 600; }
 
@@ -454,6 +477,12 @@
         </div>`;
     }
 
+    // Se a imagem falhar (ESPN fora do ar), some com ela e fica só o nome
+    const ESCUDO_VAZIO = '<span class="escudo-vazio"><i class="fas fa-shield-halved"></i></span>';
+    const htmlEscudo = url => url
+        ? `<img src="${esc(url)}" alt="" loading="lazy" onerror="this.outerHTML='${ESCUDO_VAZIO.replace(/"/g, '&quot;')}'">`
+        : ESCUDO_VAZIO;
+
     function htmlCard(b) {
         const fecha = textoFechamento(dataUTC(b.data_encerramento));
         const corpo = b.minha_aposta ? htmlJaApostei(b, b.minha_aposta) : `
@@ -487,9 +516,9 @@
                 <span class="fecha ${fecha.urgente ? 'urgente' : ''}"><i class="far fa-clock"></i> ${fecha.texto}</span>
             </div>
             <div class="confronto">
-                <span class="time">${esc(b.time_a)}</span>
+                <span class="time">${htmlEscudo(b.escudo_a)}<span>${esc(b.time_a)}</span></span>
                 <span class="vs">x</span>
-                <span class="time">${esc(b.time_b)}</span>
+                <span class="time">${htmlEscudo(b.escudo_b)}<span>${esc(b.time_b)}</span></span>
             </div>
             <div class="stats">
                 <span><i class="fas fa-users"></i><strong>${b.total_apostas}</strong> palpite${b.total_apostas === 1 ? '' : 's'}</span>

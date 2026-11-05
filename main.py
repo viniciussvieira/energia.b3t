@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 import models, schemas
 from auth import criar_token, gerar_hash_senha, usuario_atual, verificar_senha
 from database import engine, get_db
+from times import buscar_times, pre_carregar_times
 
 # Cria as tabelas no banco de dados do Kanvira
 models.Base.metadata.create_all(bind=engine)
@@ -19,7 +20,11 @@ def migrar_banco():
     """create_all não altera tabelas que já existem. Aqui adicionamos as colunas
     novas de 'apostas' num kanvira.db criado antes do login/Jussana Coins."""
     colunas = {c["name"] for c in inspect(engine).get_columns("apostas")}
+    colunas_bolao = {c["name"] for c in inspect(engine).get_columns("bolao_issues")}
     with engine.begin() as conn:
+        for coluna in ("escudo_a", "escudo_b"):
+            if coluna not in colunas_bolao:
+                conn.execute(text(f"ALTER TABLE bolao_issues ADD COLUMN {coluna} VARCHAR"))
         if "valor" not in colunas:
             conn.execute(text("ALTER TABLE apostas ADD COLUMN valor INTEGER DEFAULT 0"))
         if "usuario_id" not in colunas:
@@ -30,6 +35,7 @@ def migrar_banco():
 
 
 migrar_banco()
+pre_carregar_times()  # baixa a lista de times da ESPN em segundo plano
 
 # Swagger agora com a marca Kanvira
 app = FastAPI(
@@ -113,6 +119,8 @@ def criar_ticket_bolao(
         issue_key=nova_issue_key,
         time_a=bolao.time_a,
         time_b=bolao.time_b,
+        escudo_a=bolao.escudo_a,
+        escudo_b=bolao.escudo_b,
         data_encerramento=bolao.data_encerramento,
         status="TO DO"
     )
@@ -125,6 +133,12 @@ def criar_ticket_bolao(
     except Exception:
         db.rollback()
         raise HTTPException(status_code=500, detail="Erro interno ao salvar o ticket no Kanvira.")
+
+
+@app.get("/api/v1/times/busca", response_model=List[schemas.TimeEncontrado])
+def buscar_time(q: str, usuario: models.Usuario = Depends(usuario_atual)):
+    """Busca times pelo nome (ex: ?q=fla) e devolve o escudo de cada um."""
+    return buscar_times(q)
 
 
 @app.get("/api/v1/tickets/abertos", response_model=List[schemas.BolaoAberto])
@@ -156,6 +170,8 @@ def listar_boloes_abertos(
             "issue_key": b.issue_key,
             "time_a": b.time_a,
             "time_b": b.time_b,
+            "escudo_a": b.escudo_a,
+            "escudo_b": b.escudo_b,
             "data_encerramento": b.data_encerramento,
             "total_apostas": total,
             "pote": pote,

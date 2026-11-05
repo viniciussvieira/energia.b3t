@@ -37,6 +37,16 @@ class BolaoCreate(BaseModel):
     time_a: str = Field(..., min_length=2, max_length=50)
     time_b: str = Field(..., min_length=2, max_length=50)
     data_encerramento: datetime
+    escudo_a: Optional[str] = Field(None, max_length=500)
+    escudo_b: Optional[str] = Field(None, max_length=500)
+
+    @field_validator('escudo_a', 'escudo_b')
+    @classmethod
+    def validar_escudo(cls, v):
+        # Só aceitamos imagens da ESPN, de onde vem a busca de times
+        if v and not v.startswith('https://a.espncdn.com/'):
+            raise ValueError('Escudo inválido.')
+        return v or None
 
     @field_validator('data_encerramento')
     @classmethod
@@ -51,6 +61,8 @@ class BolaoResponse(BaseModel):
     issue_key: str
     time_a: str
     time_b: str
+    escudo_a: Optional[str] = None
+    escudo_b: Optional[str] = None
     data_encerramento: datetime
     status: str
     criado_em: datetime
@@ -69,10 +81,19 @@ class BolaoAberto(BaseModel):
     issue_key: str
     time_a: str
     time_b: str
+    escudo_a: Optional[str] = None
+    escudo_b: Optional[str] = None
     data_encerramento: datetime  # UTC
     total_apostas: int
     pote: int  # Soma das JC apostadas
     minha_aposta: Optional[MinhaAposta] = None
+
+
+class TimeEncontrado(BaseModel):
+    id: str
+    nome: str
+    escudo: Optional[str] = None
+    liga: str
 
 
 # --- Schemas de Usuário / Autenticação ---
