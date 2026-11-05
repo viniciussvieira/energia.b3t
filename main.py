@@ -25,6 +25,12 @@ def migrar_banco():
         for coluna in ("escudo_a", "escudo_b"):
             if coluna not in colunas_bolao:
                 conn.execute(text(f"ALTER TABLE bolao_issues ADD COLUMN {coluna} VARCHAR"))
+        for coluna in ("odd_casa", "odd_empate", "odd_fora", "odd_placar"):
+            if coluna not in colunas_bolao:
+                conn.execute(text(f"ALTER TABLE bolao_issues ADD COLUMN {coluna} FLOAT"))
+        for coluna in ("odd_resultado", "odd_placar"):
+            if coluna not in colunas:
+                conn.execute(text(f"ALTER TABLE apostas ADD COLUMN {coluna} FLOAT"))
         if "valor" not in colunas:
             conn.execute(text("ALTER TABLE apostas ADD COLUMN valor INTEGER DEFAULT 0"))
         if "usuario_id" not in colunas:
@@ -121,6 +127,10 @@ def criar_ticket_bolao(
         time_b=bolao.time_b,
         escudo_a=bolao.escudo_a,
         escudo_b=bolao.escudo_b,
+        odd_casa=bolao.odd_casa,
+        odd_empate=bolao.odd_empate,
+        odd_fora=bolao.odd_fora,
+        odd_placar=bolao.odd_placar,
         data_encerramento=bolao.data_encerramento,
         status="TO DO"
     )
@@ -133,6 +143,38 @@ def criar_ticket_bolao(
     except Exception:
         db.rollback()
         raise HTTPException(status_code=500, detail="Erro interno ao salvar o ticket no Kanvira.")
+
+
+def odd_do_resultado(bolao: models.BolaoIssue, gols_a: int, gols_b: int) -> float:
+    """ODD do resultado que o palpite indica: vitória do mandante, empate ou vitória do visitante."""
+    if gols_a > gols_b:
+        return bolao.odd_casa
+    if gols_a < gols_b:
+        return bolao.odd_fora
+    return bolao.odd_empate
+
+
+@app.put("/api/v1/tickets/{issue_key}/odds", response_model=schemas.BolaoResponse)
+def editar_odds(
+    issue_key: str,
+    odds: schemas.Odds,
+    db: Session = Depends(get_db),
+    usuario: models.Usuario = Depends(usuario_atual),
+):
+    """Admin altera as ODDs. Vale só para palpites novos: os já feitos mantêm a ODD da hora da aposta."""
+    if not usuario.is_admin:
+        raise HTTPException(status_code=403, detail="Só o administrador pode editar as ODDs.")
+    bolao = db.query(models.BolaoIssue).filter(models.BolaoIssue.issue_key == issue_key.upper()).first()
+    if not bolao:
+        raise HTTPException(status_code=404, detail="Card de bolão não encontrado.")
+
+    bolao.odd_casa = odds.odd_casa
+    bolao.odd_empate = odds.odd_empate
+    bolao.odd_fora = odds.odd_fora
+    bolao.odd_placar = odds.odd_placar
+    db.commit()
+    db.refresh(bolao)
+    return bolao
 
 
 @app.get("/api/v1/times/busca", response_model=List[schemas.TimeEncontrado])
@@ -172,6 +214,10 @@ def listar_boloes_abertos(
             "time_b": b.time_b,
             "escudo_a": b.escudo_a,
             "escudo_b": b.escudo_b,
+            "odd_casa": b.odd_casa,
+            "odd_empate": b.odd_empate,
+            "odd_fora": b.odd_fora,
+            "odd_placar": b.odd_placar,
             "data_encerramento": b.data_encerramento,
             "total_apostas": total,
             "pote": pote,
@@ -179,6 +225,8 @@ def listar_boloes_abertos(
                 "gols_time_a": minha.gols_time_a,
                 "gols_time_b": minha.gols_time_b,
                 "valor": minha.valor or 0,
+                "odd_resultado": minha.odd_resultado,
+                "odd_placar": minha.odd_placar,
             },
         })
     return resultado
@@ -200,6 +248,10 @@ def registrar_aposta(
     # 2. Regra de Negócio: Bloqueia apostas após o horário do jogo
     if bolao.data_encerramento <= datetime.utcnow():
         raise HTTPException(status_code=400, detail="Este bolão já está encerrado para novos palpites.")
+
+    # 2b. Sem ODD definida não dá para saber quanto pagar
+    if None in (bolao.odd_casa, bolao.odd_empate, bolao.odd_fora, bolao.odd_placar):
+        raise HTTPException(status_code=400, detail="Este bolão ainda não tem ODDs definidas pelo admin.")
 
     # 3. Um palpite por pessoa em cada bolão
     ja_apostou = (
@@ -227,6 +279,8 @@ def registrar_aposta(
             gols_time_a=aposta.gols_time_a,
             gols_time_b=aposta.gols_time_b,
             valor=aposta.valor,
+            odd_resultado=odd_do_resultado(bolao, aposta.gols_time_a, aposta.gols_time_b),
+            odd_placar=bolao.odd_placar,
             bolao_id=bolao.id,
             usuario_id=usuario.id,
         )

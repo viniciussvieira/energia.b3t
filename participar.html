@@ -333,6 +333,85 @@
         .status.error { color: var(--error); }
         .status.success { color: var(--success); }
 
+        /* --- ODDs --- */
+        .odds {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 6px;
+        }
+
+        .odd {
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 6px 4px;
+            text-align: center;
+            min-width: 0;
+        }
+
+        .odd small {
+            display: block;
+            color: var(--text-muted);
+            font-size: 0.72em;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .odd strong { color: var(--accent); font-size: 1.05em; }
+        .odd.destaque { border-color: var(--accent); background: rgba(88, 166, 255, 0.08); }
+
+        .sem-odds {
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.9em;
+            border: 1px dashed var(--border);
+            border-radius: 8px;
+            padding: 10px;
+        }
+
+        .retorno {
+            background: rgba(63, 185, 80, 0.06);
+            border: 1px solid rgba(63, 185, 80, 0.25);
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-size: 0.86em;
+            color: var(--text-muted);
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .retorno strong { color: var(--success); }
+        .retorno[hidden] { display: none; }
+
+        .admin-odds { border-top: 1px dashed var(--border); padding-top: 12px; }
+
+        .btn-editar-odds {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            font-size: 0.85em;
+            cursor: pointer;
+            padding: 2px 0;
+        }
+
+        .btn-editar-odds:hover { color: var(--accent); }
+
+        .form-odds { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+        .form-odds .odds input { font-size: 1em; padding: 8px 4px; }
+        .form-odds .linha-botoes { display: flex; gap: 8px; }
+        .form-odds .linha-botoes .btn { flex: 1; padding: 8px 12px; }
+        .btn-secundario {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            border-radius: 8px;
+            padding: 8px 12px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
         .ja-apostei {
             background: rgba(63, 185, 80, 0.08);
             border: 1px solid rgba(63, 185, 80, 0.35);
@@ -470,10 +549,57 @@
     }
 
     // --- Renderização ---
+    const fmtOdd = o => Number(o).toFixed(2);
+    const temOdds = b => [b.odd_casa, b.odd_empate, b.odd_fora, b.odd_placar].every(o => o != null);
+
+    // Qual resultado o placar indica: 'casa', 'empate' ou 'fora'
+    const resultadoDo = (ga, gb) => ga > gb ? 'casa' : ga < gb ? 'fora' : 'empate';
+    const nomeResultado = (b, r) => r === 'casa' ? `vitória ${b.time_a}` : r === 'fora' ? `vitória ${b.time_b}` : 'empate';
+
+    function htmlOdds(b, destaque = null) {
+        if (!temOdds(b)) return '<div class="sem-odds"><i class="fas fa-hourglass-half"></i> Aguardando o admin definir as ODDs</div>';
+        const item = (chave, rotulo, valor) =>
+            `<div class="odd ${destaque === chave ? 'destaque' : ''}" data-odd="${chave}"><small title="${esc(rotulo)}">${esc(rotulo)}</small><strong>${fmtOdd(valor)}</strong></div>`;
+        return `<div class="odds">
+            ${item('casa', b.time_a, b.odd_casa)}
+            ${item('empate', 'Empate', b.odd_empate)}
+            ${item('fora', b.time_b, b.odd_fora)}
+            ${item('placar', 'Placar exato', b.odd_placar)}
+        </div>`;
+    }
+
     function htmlJaApostei(b, m) {
+        const r = resultadoDo(m.gols_time_a, m.gols_time_b);
+        const ganhos = m.odd_placar && m.odd_resultado
+            ? `<small>Acertando o placar: <b>${fmtJC(Math.floor(m.valor * m.odd_placar))} JC</b> · Só o resultado (${esc(nomeResultado(b, r))}): <b>${fmtJC(Math.floor(m.valor * m.odd_resultado))} JC</b></small>`
+            : '';
         return `<div class="ja-apostei">
             <i class="fas fa-check"></i> Seu palpite: ${esc(b.time_a)} ${m.gols_time_a} x ${m.gols_time_b} ${esc(b.time_b)}
-            <small>${fmtJC(m.valor)} JC apostadas</small>
+            <small>${fmtJC(m.valor)} JC apostadas${m.odd_placar ? ` · ODDs travadas: ${fmtOdd(m.odd_resultado)} / ${fmtOdd(m.odd_placar)}` : ''}</small>
+            ${ganhos}
+        </div>`;
+    }
+
+    function htmlAdminOdds(b) {
+        const campo = (nome, rotulo, valor) => `
+            <div class="odd"><small>${esc(rotulo)}</small>
+                <input type="number" name="${nome}" min="1.01" step="0.01" inputmode="decimal" value="${valor != null ? fmtOdd(valor) : ''}" aria-label="ODD ${esc(rotulo)}" required>
+            </div>`;
+        return `<div class="admin-odds">
+            <button type="button" class="btn-editar-odds"><i class="fas fa-pen"></i> Editar ODDs</button>
+            <form class="form-odds" data-key="${esc(b.issue_key)}" novalidate hidden>
+                <div class="odds">
+                    ${campo('odd_casa', b.time_a, b.odd_casa)}
+                    ${campo('odd_empate', 'Empate', b.odd_empate)}
+                    ${campo('odd_fora', b.time_b, b.odd_fora)}
+                    ${campo('odd_placar', 'Placar exato', b.odd_placar)}
+                </div>
+                <span class="status" style="text-align:left">Vale só para os palpites novos. Quem já apostou mantém a ODD da hora da aposta.</span>
+                <div class="linha-botoes">
+                    <button type="button" class="btn-secundario cancelar-odds">Cancelar</button>
+                    <button type="submit" class="btn"><i class="fas fa-check"></i> Salvar ODDs</button>
+                </div>
+            </form>
         </div>`;
     }
 
@@ -485,7 +611,7 @@
 
     function htmlCard(b) {
         const fecha = textoFechamento(dataUTC(b.data_encerramento));
-        const corpo = b.minha_aposta ? htmlJaApostei(b, b.minha_aposta) : `
+        const corpo = b.minha_aposta ? htmlJaApostei(b, b.minha_aposta) : !temOdds(b) ? '' : `
             <form class="palpite" data-key="${esc(b.issue_key)}" novalidate>
                 <div class="placar">
                     <input type="number" name="gols_a" min="0" max="99" inputmode="numeric" placeholder="${esc(b.time_a)}" aria-label="Gols ${esc(b.time_a)}" required>
@@ -506,6 +632,7 @@
                         <button type="button" class="atalho" data-valor="tudo">Tudo</button>
                     </div>
                 </div>
+                <div class="retorno" hidden></div>
                 <button type="submit" class="btn"><i class="fas fa-coins"></i> Apostar</button>
                 <p class="status" role="status"></p>
             </form>`;
@@ -524,7 +651,9 @@
                 <span><i class="fas fa-users"></i><strong>${b.total_apostas}</strong> palpite${b.total_apostas === 1 ? '' : 's'}</span>
                 <span><i class="fas fa-trophy"></i>Pote <strong>${fmtJC(b.pote)}</strong> JC</span>
             </div>
+            ${htmlOdds(b, b.minha_aposta ? resultadoDo(b.minha_aposta.gols_time_a, b.minha_aposta.gols_time_b) : null)}
             <div class="corpo">${corpo}</div>
+            ${isAdmin ? htmlAdminOdds(b) : ''}
         </article>`;
     }
 
@@ -538,23 +667,91 @@
             </div>`;
             return;
         }
+        boloesPorKey = Object.fromEntries(boloes.map(b => [b.issue_key, b]));
         lista.innerHTML = boloes.map(htmlCard).join('');
+    }
+
+    let boloesPorKey = {};
+
+    // Mostra "se acertar, recebe X JC" enquanto a pessoa preenche o palpite
+    function atualizarRetorno(form) {
+        const b = boloesPorKey[form.dataset.key];
+        const caixa = form.querySelector('.retorno');
+        const ga = form.gols_a.value, gb = form.gols_b.value, valor = parseInt(form.valor.value, 10);
+        const card = form.closest('.card');
+        card.querySelectorAll('.odds .odd').forEach(o => o.classList.remove('destaque'));
+        if (!b || ga === '' || gb === '') { caixa.hidden = true; return; }
+
+        const r = resultadoDo(+ga, +gb);
+        card.querySelector(`.odds .odd[data-odd="${r}"]`)?.classList.add('destaque');
+        card.querySelector('.odds .odd[data-odd="placar"]')?.classList.add('destaque');
+        if (!(valor > 0)) { caixa.hidden = true; return; }
+
+        const oddR = b[`odd_${r}`];
+        caixa.innerHTML = `
+            <span>Acertando o placar ${ga} x ${gb}: <strong>${fmtJC(Math.floor(valor * b.odd_placar))} JC</strong> (×${fmtOdd(b.odd_placar)})</span>
+            <span>Acertando só o resultado (${esc(nomeResultado(b, r))}): <strong>${fmtJC(Math.floor(valor * oddR))} JC</strong> (×${fmtOdd(oddR)})</span>`;
+        caixa.hidden = false;
     }
 
     // --- Interações (delegadas na lista) ---
     const lista = document.getElementById('lista');
 
     lista.addEventListener('click', e => {
+        const editar = e.target.closest('.btn-editar-odds');
+        if (editar) {
+            const f = editar.nextElementSibling;
+            f.hidden = !f.hidden;
+            if (!f.hidden) f.querySelector('input').focus();
+            return;
+        }
+        const cancelar = e.target.closest('.cancelar-odds');
+        if (cancelar) { cancelar.closest('.form-odds').hidden = true; return; }
+
         const atalho = e.target.closest('.atalho');
         if (!atalho) return;
-        const input = atalho.closest('form').querySelector('[name="valor"]');
+        const form = atalho.closest('form');
+        const input = form.querySelector('[name="valor"]');
         input.value = atalho.dataset.valor === 'tudo' ? saldo : atalho.dataset.valor;
         input.focus();
+        atualizarRetorno(form);
+    });
+
+    lista.addEventListener('input', e => {
+        const form = e.target.closest('form.palpite');
+        if (form) atualizarRetorno(form);
+    });
+
+    // Admin salva novas ODDs
+    lista.addEventListener('submit', async e => {
+        const form = e.target;
+        if (!form.classList.contains('form-odds')) return;
+        e.preventDefault();
+        const status = form.querySelector('.status');
+        const odds = {};
+        for (const nome of ['odd_casa', 'odd_empate', 'odd_fora', 'odd_placar']) {
+            const v = parseFloat(String(form[nome].value).replace(',', '.'));
+            if (!(v >= 1.01)) { status.textContent = 'Todas as ODDs precisam ser no mínimo 1.01.'; status.className = 'status error'; return; }
+            odds[nome] = Math.round(v * 100) / 100;
+        }
+        const botao = form.querySelector('button[type="submit"]');
+        botao.disabled = true;
+        try {
+            const { ok, dados } = await api(`/tickets/${encodeURIComponent(form.dataset.key)}/odds`, { method: 'PUT', body: JSON.stringify(odds) });
+            if (ok) return carregarBoloes();
+            status.textContent = typeof dados.detail === 'string' ? dados.detail : 'Verifique as ODDs.';
+            status.className = 'status error';
+        } catch (err) {
+            status.textContent = 'Erro de conexão com o servidor.';
+            status.className = 'status error';
+        }
+        botao.disabled = false;
     });
 
     lista.addEventListener('submit', async e => {
-        e.preventDefault();
         const form = e.target;
+        if (!form.classList.contains('palpite')) return;
+        e.preventDefault();
         const status = form.querySelector('.status');
         const botao = form.querySelector('button[type="submit"]');
         const setStatus = (t, tipo = '') => { status.textContent = t; status.className = 'status ' + tipo; };

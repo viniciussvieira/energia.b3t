@@ -385,6 +385,30 @@
         .form-group input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.2); }
         .hint { color: var(--text-muted); font-size: 0.8em; }
 
+        /* --- ODDs --- */
+        .odds-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+        .odds-grid .form-group label {
+            font-size: 0.82em;
+            color: var(--text-muted);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .odds-grid input { font-weight: 700; text-align: center; }
+        .secao-titulo {
+            font-size: 0.9em;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: -6px;
+        }
+        .secao-titulo i { color: var(--accent); }
+
         /* --- Busca de time com escudo --- */
         .busca-wrap { position: relative; }
         .busca-wrap input { padding-left: 52px !important; }
@@ -488,6 +512,27 @@
                 <input type="datetime-local" id="data_encerramento" required>
                 <span class="hint">No seu horário local. Normalmente, o horário de início do jogo.</span>
             </div>
+            <div class="secao-titulo"><i class="fas fa-percent"></i> ODDs (multiplicador pago a quem acertar)</div>
+            <div class="odds-grid">
+                <div class="form-group">
+                    <label for="odd_casa" id="lbl-odd-casa">Vitória do mandante</label>
+                    <input type="number" id="odd_casa" min="1.01" step="0.01" inputmode="decimal" placeholder="1.80" required>
+                </div>
+                <div class="form-group">
+                    <label for="odd_empate">Empate</label>
+                    <input type="number" id="odd_empate" min="1.01" step="0.01" inputmode="decimal" placeholder="3.20" required>
+                </div>
+                <div class="form-group">
+                    <label for="odd_fora" id="lbl-odd-fora">Vitória do visitante</label>
+                    <input type="number" id="odd_fora" min="1.01" step="0.01" inputmode="decimal" placeholder="4.50" required>
+                </div>
+                <div class="form-group">
+                    <label for="odd_placar">Placar exato</label>
+                    <input type="number" id="odd_placar" min="1.01" step="0.01" inputmode="decimal" placeholder="8.00" required>
+                </div>
+            </div>
+            <span class="hint" style="margin-top:-8px">Ex: ODD 1.80 e aposta de 100 JC → recebe 180 JC se acertar. Dá para editar depois na tela de bolões.</span>
+
             <button type="submit" class="btn"><i class="fas fa-plus"></i> Criar bolão</button>
             <p class="status" role="status"></p>
         </form>
@@ -544,6 +589,12 @@
         if (time_a.length < 2 || time_b.length < 2) return setStatus('Informe o nome dos dois times.', 'error');
         if (!fechamento) return setStatus('Informe a data e hora de fechamento.', 'error');
         const data = new Date(fechamento);  // interpretado no fuso do navegador
+        const odds = {};
+        for (const campo of ['odd_casa', 'odd_empate', 'odd_fora', 'odd_placar']) {
+            const v = parseFloat(document.getElementById(campo).value.replace(',', '.'));
+            if (!(v >= 1.01)) return setStatus('Preencha as 4 ODDs (mínimo 1.01).', 'error');
+            odds[campo] = Math.round(v * 100) / 100;
+        }
         if (data <= new Date()) return setStatus('O fechamento precisa ser no futuro.', 'error');
 
         const botao = form.querySelector('button[type="submit"]');
@@ -557,6 +608,7 @@
                 body: JSON.stringify({
                     time_a, time_b,
                     escudo_a: escudos.a, escudo_b: escudos.b,
+                    ...odds,
                     data_encerramento: data.toISOString(),
                 }),
             });
@@ -565,6 +617,7 @@
                 form.reset();
                 definirEscudo('a', null);
                 definirEscudo('b', null);
+                atualizarRotulosOdds();
             } else {
                 setStatus(typeof dados.detail === 'string' ? dados.detail : 'Verifique os campos.', 'error');
             }
@@ -660,6 +713,18 @@
         });
         input.addEventListener('blur', () => setTimeout(fechar, 120));
     });
+
+    // Os rótulos das ODDs mostram o nome dos times ("Vitória Flamengo")
+    function atualizarRotulosOdds() {
+        const a = document.getElementById('time_a').value.trim();
+        const b = document.getElementById('time_b').value.trim();
+        document.getElementById('lbl-odd-casa').textContent = a ? `Vitória ${a}` : 'Vitória do mandante';
+        document.getElementById('lbl-odd-fora').textContent = b ? `Vitória ${b}` : 'Vitória do visitante';
+    }
+    document.getElementById('time_a').addEventListener('input', atualizarRotulosOdds);
+    document.getElementById('time_b').addEventListener('input', atualizarRotulosOdds);
+    document.querySelectorAll('.sugestoes').forEach(l => l.addEventListener('mousedown', () => setTimeout(atualizarRotulosOdds)));
+    document.querySelectorAll('.busca-wrap input').forEach(i => i.addEventListener('keydown', e => { if (e.key === 'Enter') setTimeout(atualizarRotulosOdds); }));
 
     async function iniciar() {
         try {

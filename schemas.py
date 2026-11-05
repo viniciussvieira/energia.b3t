@@ -23,6 +23,8 @@ class ApostaResponse(BaseModel):
     gols_time_a: int
     gols_time_b: int
     valor: int
+    odd_resultado: Optional[float] = None
+    odd_placar: Optional[float] = None
     criado_em: datetime
 
     class Config:
@@ -32,8 +34,24 @@ class ApostaRegistrada(ApostaResponse):
     saldo_atual: int  # Saldo do usuário depois de descontar a aposta
 
 
+# --- ODDs ---
+def _odd():
+    return Field(..., ge=1.01, le=1000, description="Multiplicador pago a quem acertar")
+
+class Odds(BaseModel):
+    odd_casa: float = _odd()
+    odd_empate: float = _odd()
+    odd_fora: float = _odd()
+    odd_placar: float = _odd()
+
+    @field_validator('odd_casa', 'odd_empate', 'odd_fora', 'odd_placar')
+    @classmethod
+    def duas_casas(cls, v):
+        return round(v, 2)
+
+
 # --- Schemas de Bolão ---
-class BolaoCreate(BaseModel):
+class BolaoCreate(Odds):
     time_a: str = Field(..., min_length=2, max_length=50)
     time_b: str = Field(..., min_length=2, max_length=50)
     data_encerramento: datetime
@@ -63,6 +81,10 @@ class BolaoResponse(BaseModel):
     time_b: str
     escudo_a: Optional[str] = None
     escudo_b: Optional[str] = None
+    odd_casa: Optional[float] = None
+    odd_empate: Optional[float] = None
+    odd_fora: Optional[float] = None
+    odd_placar: Optional[float] = None
     data_encerramento: datetime
     status: str
     criado_em: datetime
@@ -75,6 +97,8 @@ class MinhaAposta(BaseModel):
     gols_time_a: int
     gols_time_b: int
     valor: int
+    odd_resultado: Optional[float] = None
+    odd_placar: Optional[float] = None
 
 class BolaoAberto(BaseModel):
     """Card de bolão como aparece na tela de palpites."""
@@ -83,6 +107,10 @@ class BolaoAberto(BaseModel):
     time_b: str
     escudo_a: Optional[str] = None
     escudo_b: Optional[str] = None
+    odd_casa: Optional[float] = None
+    odd_empate: Optional[float] = None
+    odd_fora: Optional[float] = None
+    odd_placar: Optional[float] = None
     data_encerramento: datetime  # UTC
     total_apostas: int
     pote: int  # Soma das JC apostadas

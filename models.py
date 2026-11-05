@@ -1,5 +1,5 @@
 import datetime
-from sqlalchemy import Boolean, Column, Integer, String, DateTime, ForeignKey, UniqueConstraint
+from sqlalchemy import Boolean, Column, Float, Integer, String, DateTime, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import relationship
 from database import Base
 
@@ -12,6 +12,11 @@ class BolaoIssue(Base):
     time_b = Column(String, index=True)
     escudo_a = Column(String, nullable=True)  # URL da imagem do escudo (ESPN)
     escudo_b = Column(String, nullable=True)
+    # ODDs definidas pelo admin (multiplicador pago a quem acertar)
+    odd_casa = Column(Float, nullable=True)     # vitória do mandante (time A)
+    odd_empate = Column(Float, nullable=True)
+    odd_fora = Column(Float, nullable=True)     # vitória do visitante (time B)
+    odd_placar = Column(Float, nullable=True)   # placar exato
     data_encerramento = Column(DateTime)  # Sempre em UTC
     status = Column(String, default="TO DO")
     criado_em = Column(DateTime, default=datetime.datetime.utcnow)
@@ -29,6 +34,9 @@ class Aposta(Base):
     gols_time_a = Column(Integer) # Placar do mandante
     gols_time_b = Column(Integer) # Placar do visitante
     valor = Column(Integer, default=0)  # Jussana Coins apostadas
+    # ODDs "travadas" no momento da aposta (editar o bolão depois não muda isso)
+    odd_resultado = Column(Float, nullable=True)  # ODD do resultado palpitado (casa/empate/fora)
+    odd_placar = Column(Float, nullable=True)     # ODD de placar exato
     criado_em = Column(DateTime, default=datetime.datetime.utcnow)
 
     # Chave Estrangeira ligando a aposta ao Bolão correto
