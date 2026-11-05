@@ -1,41 +1,79 @@
-from pydantic import BaseModel, Field, validator
-from datetime import datetime
+from pydantic import BaseModel, Field, field_validator
+from datetime import datetime, timezone
 from typing import List, Optional
+
+
+def para_utc_sem_fuso(v: datetime) -> datetime:
+    """Converte datas com fuso (ex: 2026-11-05T23:00:00Z) para UTC 'ingênuo',
+    que é como guardamos no SQLite e comparamos com datetime.utcnow()."""
+    if v.tzinfo is not None:
+        v = v.astimezone(timezone.utc).replace(tzinfo=None)
+    return v
+
 
 # --- Schemas de Aposta ---
 class ApostaCreate(BaseModel):
-    nome_usuario: str = Field(..., min_length=2, max_length=50)
-    gols_time_a: int = Field(..., ge=0, description="Gols não podem ser negativos")
-    gols_time_b: int = Field(..., ge=0)
+    gols_time_a: int = Field(..., ge=0, le=99, description="Gols não podem ser negativos")
+    gols_time_b: int = Field(..., ge=0, le=99)
+    valor: int = Field(..., ge=1, description="Quantidade de Jussana Coins apostadas")
 
-class ApostaResponse(ApostaCreate):
+class ApostaResponse(BaseModel):
     id: int
+    nome_usuario: str
+    gols_time_a: int
+    gols_time_b: int
+    valor: int
     criado_em: datetime
 
     class Config:
         from_attributes = True
 
-# --- Schemas de Bolão (Atualizados para listar as apostas atreladas) ---
+class ApostaRegistrada(ApostaResponse):
+    saldo_atual: int  # Saldo do usuário depois de descontar a aposta
+
+
+# --- Schemas de Bolão ---
 class BolaoCreate(BaseModel):
     time_a: str = Field(..., min_length=2, max_length=50)
     time_b: str = Field(..., min_length=2, max_length=50)
     data_encerramento: datetime
 
-    @validator('data_encerramento')
+    @field_validator('data_encerramento')
+    @classmethod
     def validar_data_futura(cls, v):
+        v = para_utc_sem_fuso(v)
         if v <= datetime.utcnow():
             raise ValueError('A data de encerramento deve ser no futuro.')
         return v
 
-class BolaoResponse(BolaoCreate):
+class BolaoResponse(BaseModel):
     id: int
     issue_key: str
+    time_a: str
+    time_b: str
+    data_encerramento: datetime
     status: str
     criado_em: datetime
-    apostas: List[ApostaResponse] = [] # Agora o bolão retorna a lista de apostas dele!
+    apostas: List[ApostaResponse] = []
 
     class Config:
         from_attributes = True
+
+class MinhaAposta(BaseModel):
+    gols_time_a: int
+    gols_time_b: int
+    valor: int
+
+class BolaoAberto(BaseModel):
+    """Card de bolão como aparece na tela de palpites."""
+    issue_key: str
+    time_a: str
+    time_b: str
+    data_encerramento: datetime  # UTC
+    total_apostas: int
+    pote: int  # Soma das JC apostadas
+    minha_aposta: Optional[MinhaAposta] = None
+
 
 # --- Schemas de Usuário / Autenticação ---
 class UsuarioCadastro(BaseModel):

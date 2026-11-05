@@ -3,88 +3,586 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kanvira - Participar do Bolão</title>
+    <title>Kanvira | Bolões abertos</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
-        body { font-family: 'Segoe UI', Tahoma, sans-serif; background-color: #f4f5f7; padding: 20px; }
-        .container { max-width: 400px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
-        h2 { color: #172b4d; text-align: center; }
-        .form-group { margin-bottom: 15px; }
-        label { display: block; margin-bottom: 5px; font-weight: bold; color: #5e6c84; }
-        input { width: 100%; padding: 10px; border: 2px solid #dfe1e6; border-radius: 4px; box-sizing: border-box; }
-        .placar-container { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-        .placar-container input { width: 45%; text-align: center; font-size: 18px; font-weight: bold;}
-        .placar-container span { font-weight: bold; font-size: 20px; color: #5e6c84; }
-        button { width: 100%; padding: 12px; background-color: #00875a; color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; margin-top: 10px;}
-        button:hover { background-color: #006644; }
-        #mensagem { margin-top: 15px; text-align: center; font-weight: bold; }
-        .sucesso { color: green; }
-        .erro { color: red; }
+        :root {
+            --bg-primary: #0D1117;
+            --bg-secondary: #161B22;
+            --text-main: #E6EDF3;
+            --text-muted: #8B949E;
+            --accent: #58A6FF;
+            --accent-hover: #79B8FF;
+            --success: #3FB950;
+            --error: #F85149;
+            --border: #30363d;
+            --nav-bg: #010409;
+            --nav-height: 70px;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        [hidden] { display: none !important; }
+
+        body {
+            background: var(--bg-primary);
+            color: var(--text-main);
+            font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        button, input { font-family: inherit; }
+
+        a:focus-visible, button:focus-visible {
+            outline: 2px solid var(--accent);
+            outline-offset: 3px;
+            border-radius: 6px;
+        }
+
+        /* --- Navegação --- */
+        nav {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%;
+            height: var(--nav-height);
+            background: var(--nav-bg);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 0 5%;
+            z-index: 10;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.4);
+            border-bottom: 1px solid var(--border);
+        }
+
+        nav .logo {
+            color: var(--text-main);
+            font-weight: 700;
+            font-size: 1.3em;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        nav .logo i { color: var(--accent); }
+
+        .nav-direita {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .coin-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(88, 166, 255, 0.1);
+            color: var(--accent);
+            border: 1px solid rgba(88, 166, 255, 0.3);
+            border-radius: 999px;
+            padding: 4px 14px;
+            font-size: 0.9em;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .usuario-nome {
+            color: var(--text-muted);
+            font-size: 0.95em;
+        }
+
+        .usuario-nome strong { color: var(--text-main); }
+
+        .link-nav {
+            color: var(--text-main);
+            text-decoration: none;
+            font-size: 0.95em;
+            padding-bottom: 3px;
+            border-bottom: 2px solid transparent;
+            transition: color 0.3s, border-color 0.3s;
+            white-space: nowrap;
+        }
+
+        .link-nav:hover { color: var(--accent); border-bottom-color: var(--accent); }
+
+        .btn-sair {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            border-radius: 8px;
+            padding: 6px 12px;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: color 0.3s, border-color 0.3s;
+        }
+
+        .btn-sair:hover { color: var(--error); border-color: var(--error); }
+
+        /* --- Conteúdo --- */
+        main {
+            flex: 1;
+            width: 100%;
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: calc(var(--nav-height) + 40px) 20px 60px;
+        }
+
+        .cabecalho { text-align: center; margin-bottom: 30px; }
+        .cabecalho h1 { font-size: 2em; margin-bottom: 6px; }
+        .cabecalho p { color: var(--text-muted); }
+        .cabecalho p strong { color: var(--text-main); }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 24px;
+        }
+
+        .card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 15px;
+            padding: 22px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            transition: border-color 0.3s;
+        }
+
+        .card:hover { border-color: rgba(88, 166, 255, 0.5); }
+
+        .card-topo {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.85em;
+        }
+
+        .tag {
+            background: rgba(88, 166, 255, 0.1);
+            color: var(--accent);
+            border: 1px solid rgba(88, 166, 255, 0.3);
+            border-radius: 999px;
+            padding: 2px 10px;
+            font-weight: 600;
+        }
+
+        .fecha { color: var(--text-muted); text-align: right; }
+        .fecha.urgente { color: #D29922; }
+
+        .confronto {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            align-items: center;
+            gap: 10px;
+            text-align: center;
+        }
+
+        .time {
+            font-weight: 700;
+            font-size: 1.15em;
+            overflow-wrap: anywhere;
+        }
+
+        .vs { color: var(--text-muted); font-weight: 600; }
+
+        .stats {
+            display: flex;
+            justify-content: center;
+            gap: 18px;
+            color: var(--text-muted);
+            font-size: 0.88em;
+        }
+
+        .stats i { margin-right: 5px; }
+        .stats strong { color: var(--text-main); }
+
+        /* Formulário de palpite */
+        .palpite { display: flex; flex-direction: column; gap: 14px; }
+
+        .placar {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .placar span { color: var(--text-muted); font-weight: 700; }
+
+        input[type="number"] {
+            width: 100%;
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px;
+            color: var(--text-main);
+            font-size: 1.3em;
+            font-weight: 700;
+            text-align: center;
+            transition: border-color 0.3s, box-shadow 0.3s;
+            -moz-appearance: textfield;
+        }
+
+        input[type="number"]::-webkit-outer-spin-button,
+        input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+        input[type="number"]:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.2);
+        }
+
+        input[type="number"]::placeholder { color: #6E7681; font-weight: 500; font-size: 0.8em; }
+
+        .valor-linha label {
+            display: block;
+            font-size: 0.88em;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+
+        .valor-wrap { position: relative; }
+
+        .valor-wrap input { font-size: 1.05em; text-align: left; padding-left: 14px; padding-right: 48px; }
+
+        .valor-wrap .sufixo {
+            position: absolute;
+            right: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            font-weight: 600;
+            pointer-events: none;
+        }
+
+        .atalhos { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+
+        .atalho {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            border-radius: 999px;
+            padding: 3px 12px;
+            font-size: 0.82em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: color 0.3s, border-color 0.3s;
+        }
+
+        .atalho:hover { color: var(--accent); border-color: var(--accent); }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            background: var(--accent);
+            color: var(--bg-primary);
+            border: 2px solid var(--accent);
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 1em;
+            cursor: pointer;
+            transition: 0.3s;
+            text-decoration: none;
+        }
+
+        .btn:hover {
+            background: var(--accent-hover);
+            border-color: var(--accent-hover);
+            box-shadow: 0 0 12px rgba(88, 166, 255, 0.3);
+        }
+
+        .btn:disabled { opacity: 0.6; cursor: wait; }
+
+        .status { min-height: 1.2em; font-size: 0.88em; text-align: center; }
+        .status.error { color: var(--error); }
+        .status.success { color: var(--success); }
+
+        .ja-apostei {
+            background: rgba(63, 185, 80, 0.08);
+            border: 1px solid rgba(63, 185, 80, 0.35);
+            color: var(--success);
+            border-radius: 10px;
+            padding: 12px;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        .ja-apostei small { display: block; color: var(--text-muted); font-weight: 500; margin-top: 2px; }
+
+        .vazio, .carregando {
+            text-align: center;
+            color: var(--text-muted);
+            padding: 50px 20px;
+            border: 1px dashed var(--border);
+            border-radius: 15px;
+        }
+
+        .vazio i { font-size: 2em; color: var(--accent); margin-bottom: 12px; display: block; }
+        .vazio .btn { margin-top: 16px; }
+
+        footer {
+            background: var(--nav-bg);
+            color: var(--text-muted);
+            text-align: center;
+            padding: 24px 20px;
+            border-top: 1px solid var(--border);
+            font-size: 0.9em;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .btn, .card, .atalho { transition: none; }
+        }
+
+        @media (max-width: 700px) {
+            :root { --nav-height: 64px; }
+            nav { padding: 0 16px; }
+            nav .logo span { display: none; }
+            .usuario-nome { display: none; }
+            .nav-direita { gap: 10px; }
+            main { padding: calc(var(--nav-height) + 28px) 16px 40px; }
+            .cabecalho h1 { font-size: 1.6em; }
+            .grid { grid-template-columns: 1fr; }
+        }
     </style>
 </head>
 <body>
+    <header>
+        <nav>
+            <a href="participar.html" class="logo"><i class="fas fa-futbol" aria-hidden="true"></i> <span>Kanvira</span></a>
+            <div class="nav-direita">
+                <a href="novo-bolao.html" class="link-nav" id="link-admin" hidden><i class="fas fa-plus"></i> Novo bolão</a>
+                <span class="usuario-nome">Olá, <strong id="nome-usuario">...</strong></span>
+                <span class="coin-chip" title="Seu saldo em Jussana Coins"><i class="fas fa-coins" aria-hidden="true"></i> <span id="saldo">...</span> JC</span>
+                <button class="btn-sair" id="sair" type="button"><i class="fas fa-right-from-bracket"></i> Sair</button>
+            </div>
+        </nav>
+    </header>
 
-<div class="container">
-    <h2>Fazer meu Palpite</h2>
-    <form id="formAposta">
-        <div class="form-group">
-            <label for="issue_key">Código do Bolão (Ex: KAN-1)</label>
-            <input type="text" id="issue_key" required placeholder="KAN-1" style="text-transform: uppercase;">
-        </div>
-        
-        <div class="form-group">
-            <label for="nome_usuario">Seu Nome</label>
-            <input type="text" id="nome_usuario" required placeholder="Ex: Renan">
-        </div>
-
-        <label>Qual será o placar?</label>
-        <div class="placar-container form-group">
-            <input type="number" id="gols_time_a" required min="0" placeholder="Time A">
-            <span>X</span>
-            <input type="number" id="gols_time_b" required min="0" placeholder="Time B">
+    <main>
+        <div class="cabecalho">
+            <h1>Bolões abertos</h1>
+            <p>Escolha o placar e quantas <strong>Jussana Coins</strong> quer arriscar. Um palpite por bolão.</p>
         </div>
 
-        <button type="submit">Enviar Aposta</button>
-    </form>
-    
-    <div id="mensagem"></div>
-</div>
+        <div id="lista" class="grid" aria-live="polite">
+            <p class="carregando">Carregando bolões...</p>
+        </div>
+    </main>
+
+    <footer>
+        Kanvira · Bolão entre amigos · Jussana Coin não tem valor em dinheiro
+    </footer>
 
 <script>
-    document.getElementById('formAposta').addEventListener('submit', async function(e) {
+    const API_URL = 'http://127.0.0.1:8000/api/v1';
+
+    // --- Sessão ---
+    function lerSessao() {
+        try { return localStorage.getItem('kanvira_token'); } catch (e) { return null; }
+    }
+
+    function sair() {
+        try {
+            localStorage.removeItem('kanvira_token');
+            localStorage.removeItem('kanvira_usuario');
+        } catch (e) { /* ignora */ }
+        window.location.href = 'index.html';
+    }
+
+    const token = lerSessao();
+    if (!token) window.location.href = 'index.html';
+
+    document.getElementById('sair').addEventListener('click', sair);
+
+    async function api(rota, opcoes = {}) {
+        const response = await fetch(`${API_URL}${rota}`, {
+            ...opcoes,
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+                ...(opcoes.headers || {}),
+            },
+        });
+        if (response.status === 401) { sair(); throw new Error('sessão expirada'); }
+        const dados = await response.json().catch(() => ({}));
+        return { ok: response.ok, dados };
+    }
+
+    // --- Formatação ---
+    const fmtJC = n => Number(n).toLocaleString('pt-BR');
+    const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+    // A API guarda datas em UTC sem fuso: acrescentamos o "Z" para o navegador converter para o horário local
+    const dataUTC = s => new Date(/[zZ]|[+-]\d\d:\d\d$/.test(s) ? s : s + 'Z');
+
+    function textoFechamento(data) {
+        const diffMin = Math.round((data - Date.now()) / 60000);
+        const quando = data.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+        let falta;
+        if (diffMin < 60) falta = `em ${Math.max(diffMin, 1)} min`;
+        else if (diffMin < 60 * 24) falta = `em ${Math.round(diffMin / 60)}h`;
+        else { const d = Math.round(diffMin / 1440); falta = `em ${d} dia${d === 1 ? "" : "s"}`; }
+        return { texto: `Fecha ${quando} (${falta})`, urgente: diffMin < 60 };
+    }
+
+    // --- Estado ---
+    let saldo = 0;
+
+    function atualizarSaldo(valor) {
+        saldo = valor;
+        document.getElementById('saldo').textContent = fmtJC(valor);
+    }
+
+    // --- Renderização ---
+    function htmlJaApostei(b, m) {
+        return `<div class="ja-apostei">
+            <i class="fas fa-check"></i> Seu palpite: ${esc(b.time_a)} ${m.gols_time_a} x ${m.gols_time_b} ${esc(b.time_b)}
+            <small>${fmtJC(m.valor)} JC apostadas</small>
+        </div>`;
+    }
+
+    function htmlCard(b) {
+        const fecha = textoFechamento(dataUTC(b.data_encerramento));
+        const corpo = b.minha_aposta ? htmlJaApostei(b, b.minha_aposta) : `
+            <form class="palpite" data-key="${esc(b.issue_key)}" novalidate>
+                <div class="placar">
+                    <input type="number" name="gols_a" min="0" max="99" inputmode="numeric" placeholder="${esc(b.time_a)}" aria-label="Gols ${esc(b.time_a)}" required>
+                    <span>X</span>
+                    <input type="number" name="gols_b" min="0" max="99" inputmode="numeric" placeholder="${esc(b.time_b)}" aria-label="Gols ${esc(b.time_b)}" required>
+                </div>
+                <div class="valor-linha">
+                    <label for="valor-${esc(b.issue_key)}">Quanto apostar?</label>
+                    <div class="valor-wrap">
+                        <input type="number" id="valor-${esc(b.issue_key)}" name="valor" min="1" step="1" inputmode="numeric" placeholder="100" required>
+                        <span class="sufixo">JC</span>
+                    </div>
+                    <div class="atalhos">
+                        <button type="button" class="atalho" data-valor="10">10</button>
+                        <button type="button" class="atalho" data-valor="50">50</button>
+                        <button type="button" class="atalho" data-valor="100">100</button>
+                        <button type="button" class="atalho" data-valor="250">250</button>
+                        <button type="button" class="atalho" data-valor="tudo">Tudo</button>
+                    </div>
+                </div>
+                <button type="submit" class="btn"><i class="fas fa-coins"></i> Apostar</button>
+                <p class="status" role="status"></p>
+            </form>`;
+
+        return `<article class="card" id="card-${esc(b.issue_key)}">
+            <div class="card-topo">
+                <span class="tag">${esc(b.issue_key)}</span>
+                <span class="fecha ${fecha.urgente ? 'urgente' : ''}"><i class="far fa-clock"></i> ${fecha.texto}</span>
+            </div>
+            <div class="confronto">
+                <span class="time">${esc(b.time_a)}</span>
+                <span class="vs">x</span>
+                <span class="time">${esc(b.time_b)}</span>
+            </div>
+            <div class="stats">
+                <span><i class="fas fa-users"></i><strong>${b.total_apostas}</strong> palpite${b.total_apostas === 1 ? '' : 's'}</span>
+                <span><i class="fas fa-trophy"></i>Pote <strong>${fmtJC(b.pote)}</strong> JC</span>
+            </div>
+            <div class="corpo">${corpo}</div>
+        </article>`;
+    }
+
+    function renderizar(boloes, isAdmin) {
+        const lista = document.getElementById('lista');
+        if (!boloes.length) {
+            lista.innerHTML = `<div class="vazio" style="grid-column: 1 / -1">
+                <i class="fas fa-futbol"></i>
+                Nenhum bolão aberto no momento. Volte mais tarde!
+                ${isAdmin ? '<br><a class="btn" href="novo-bolao.html"><i class="fas fa-plus"></i> Criar bolão</a>' : ''}
+            </div>`;
+            return;
+        }
+        lista.innerHTML = boloes.map(htmlCard).join('');
+    }
+
+    // --- Interações (delegadas na lista) ---
+    const lista = document.getElementById('lista');
+
+    lista.addEventListener('click', e => {
+        const atalho = e.target.closest('.atalho');
+        if (!atalho) return;
+        const input = atalho.closest('form').querySelector('[name="valor"]');
+        input.value = atalho.dataset.valor === 'tudo' ? saldo : atalho.dataset.valor;
+        input.focus();
+    });
+
+    lista.addEventListener('submit', async e => {
         e.preventDefault();
-        const mensagemDiv = document.getElementById('mensagem');
-        const issueKey = document.getElementById('issue_key').value.toUpperCase();
-        
-        const payload = {
-            nome_usuario: document.getElementById('nome_usuario').value,
-            gols_time_a: parseInt(document.getElementById('gols_time_a').value),
-            gols_time_b: parseInt(document.getElementById('gols_time_b').value)
-        };
+        const form = e.target;
+        const status = form.querySelector('.status');
+        const botao = form.querySelector('button[type="submit"]');
+        const setStatus = (t, tipo = '') => { status.textContent = t; status.className = 'status ' + tipo; };
+
+        const golsA = form.gols_a.value, golsB = form.gols_b.value, valor = form.valor.value;
+        if (golsA === '' || golsB === '') return setStatus('Preencha o placar dos dois times.', 'error');
+        if (!valor || +valor < 1 || !Number.isInteger(+valor)) return setStatus('Informe quantas JC quer apostar.', 'error');
+        if (+valor > saldo) return setStatus(`Saldo insuficiente: você tem ${fmtJC(saldo)} JC.`, 'error');
+
+        botao.disabled = true;
+        setStatus('Registrando palpite...');
 
         try {
-            // A API usa o código do ticket direto na URL da rota
-            const response = await fetch(`http://127.0.0.1:8000/api/v1/tickets/${issueKey}/apostas`, {
+            const { ok, dados } = await api(`/tickets/${encodeURIComponent(form.dataset.key)}/apostas`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
+                body: JSON.stringify({ gols_time_a: +golsA, gols_time_b: +golsB, valor: +valor }),
             });
 
-            const result = await response.json();
-
-            if (response.ok) {
-                mensagemDiv.textContent = "Aposta registrada com sucesso! Boa sorte.";
-                mensagemDiv.className = "sucesso";
-                document.getElementById('formAposta').reset();
+            if (ok) {
+                atualizarSaldo(dados.saldo_atual);
+                // Recarrega a lista para atualizar pote e mostrar o palpite feito
+                await carregarBoloes();
             } else {
-                mensagemDiv.textContent = result.detail || "Erro ao registrar aposta.";
-                mensagemDiv.className = "erro";
+                setStatus(typeof dados.detail === 'string' ? dados.detail : 'Verifique o placar e o valor.', 'error');
+                botao.disabled = false;
             }
-        } catch (error) {
-            mensagemDiv.textContent = "Erro de conexão com o Kanvira.";
-            mensagemDiv.className = "erro";
+        } catch (err) {
+            setStatus('Erro de conexão com a API do Kanvira.', 'error');
+            botao.disabled = false;
         }
     });
-</script>
 
+    // --- Carregamento ---
+    let isAdmin = false;
+
+    async function carregarBoloes() {
+        const { ok, dados } = await api('/tickets/abertos');
+        if (!ok) throw new Error('falha ao listar');
+        renderizar(dados, isAdmin);
+    }
+
+    async function iniciar() {
+        try {
+            const { ok, dados: usuario } = await api('/auth/me');
+            if (!ok) throw new Error('falha no perfil');
+            isAdmin = usuario.is_admin;
+            document.getElementById('nome-usuario').textContent = usuario.username;
+            document.getElementById('link-admin').hidden = !isAdmin;
+            atualizarSaldo(usuario.saldo);
+            await carregarBoloes();
+        } catch (err) {
+            if (err.message === 'sessão expirada') return;
+            lista.innerHTML = '<p class="vazio" style="grid-column: 1 / -1">Não foi possível conectar à API do Kanvira. O servidor está rodando?</p>';
+        }
+    }
+
+    if (token) iniciar();
+</script>
 </body>
 </html>
