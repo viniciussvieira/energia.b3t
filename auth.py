@@ -78,6 +78,12 @@ def usuario_atual(
     if usuario_id is None:
         raise erro
     usuario = db.get(models.Usuario, usuario_id)
-    if usuario is None:
+    if usuario is None or usuario.ativo is False:
         raise erro
+    return usuario
+
+
+def admin_atual(usuario: models.Usuario = Depends(usuario_atual)) -> models.Usuario:
+    if not usuario.is_admin:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Área só para o administrador.")
     return usuario

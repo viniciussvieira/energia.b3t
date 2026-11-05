@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Energia.CARVALHO | Contas</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        :root {
+            --bg-primary: #0D1117;
+            --bg-secondary: #161B22;
+            --text-main: #E6EDF3;
+            --text-muted: #8B949E;
+            --accent: #58A6FF;
+            --accent-hover: #79B8FF;
+            --success: #3FB950;
+            --error: #F85149;
+            --border: #30363d;
+            --nav-bg: #010409;
+            --nav-height: 70px;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        [hidden] { display: none !important; }
+
+        body {
+            background: var(--bg-primary);
+            color: var(--text-main);
+            font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        button, input { font-family: inherit; }
+
+        a:focus-visible, button:focus-visible {
+            outline: 2px solid var(--accent);
+            outline-offset: 3px;
+            border-radius: 6px;
+        }
+
+        /* --- Navegação --- */
+        nav {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%;
+            height: var(--nav-height);
+            background: var(--nav-bg);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 0 5%;
+            z-index: 10;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.4);
+            border-bottom: 1px solid var(--border);
+        }
+
+        nav .logo {
+            color: var(--text-main);
+            font-weight: 700;
+            font-size: 1.3em;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        nav .logo i { color: var(--accent); }
+
+        .nav-direita {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .coin-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(88, 166, 255, 0.1);
+            color: var(--accent);
+            border: 1px solid rgba(88, 166, 255, 0.3);
+            border-radius: 999px;
+            padding: 4px 14px;
+            font-size: 0.9em;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .usuario-nome {
+            color: var(--text-muted);
+            font-size: 0.95em;
+        }
+
+        .usuario-nome strong { color: var(--text-main); }
+
+        .link-nav {
+            color: var(--text-main);
+            text-decoration: none;
+            font-size: 0.95em;
+            padding-bottom: 3px;
+            border-bottom: 2px solid transparent;
+            transition: color 0.3s, border-color 0.3s;
+            white-space: nowrap;
+        }
+
+        .link-nav:hover { color: var(--accent); border-bottom-color: var(--accent); }
+
+        .btn-sair {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            border-radius: 8px;
+            padding: 6px 12px;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: color 0.3s, border-color 0.3s;
+        }
+
+        .btn-sair:hover { color: var(--error); border-color: var(--error); }
+
+        /* --- Conteúdo --- */
+        main {
+            flex: 1;
+            width: 100%;
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: calc(var(--nav-height) + 40px) 20px 60px;
+        }
+
+        .cabecalho { text-align: center; margin-bottom: 30px; }
+        .cabecalho h1 { font-size: 2em; margin-bottom: 6px; }
+        .cabecalho p { color: var(--text-muted); }
+        .cabecalho p strong { color: var(--text-main); }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 24px;
+        }
+
+        .card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 15px;
+            padding: 22px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            transition: border-color 0.3s;
+        }
+
+        .card:hover { border-color: rgba(88, 166, 255, 0.5); }
+
+        .card-topo {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.85em;
+        }
+
+        .tag {
+            background: rgba(88, 166, 255, 0.1);
+            color: var(--accent);
+            border: 1px solid rgba(88, 166, 255, 0.3);
+            border-radius: 999px;
+            padding: 2px 10px;
+            font-weight: 600;
+        }
+
+        .fecha { color: var(--text-muted); text-align: right; }
+        .fecha.urgente { color: #D29922; }
+
+        .confronto {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            align-items: center;
+            gap: 10px;
+            text-align: center;
+        }
+
+        .time {
+            font-weight: 700;
+            font-size: 1.15em;
+            overflow-wrap: anywhere;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .time img, .escudo-vazio {
+            width: 56px;
+            height: 56px;
+            object-fit: contain;
+            filter: drop-shadow(0 2px 6px rgba(0,0,0,0.4));
+        }
+
+        .escudo-vazio {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.2em;
+            color: var(--border);
+            filter: none;
+        }
+
+        .confronto { align-items: start; }
+        .confronto .vs { margin-top: 18px; }
+
+        .vs { color: var(--text-muted); font-weight: 600; }
+
+        .stats {
+            display: flex;
+            justify-content: center;
+            gap: 18px;
+            color: var(--text-muted);
+            font-size: 0.88em;
+        }
+
+        .stats i { margin-right: 5px; }
+        .stats strong { color: var(--text-main); }
+
+        /* Formulário de palpite */
+        .palpite { display: flex; flex-direction: column; gap: 14px; }
+
+        .placar {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .placar span { color: var(--text-muted); font-weight: 700; }
+
+        input[type="number"] {
+            width: 100%;
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px;
+            color: var(--text-main);
+            font-size: 1.3em;
+            font-weight: 700;
+            text-align: center;
+            transition: border-color 0.3s, box-shadow 0.3s;
+            -moz-appearance: textfield;
+        }
+
+        input[type="number"]::-webkit-outer-spin-button,
+        input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+        input[type="number"]:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.2);
+        }
+
+        input[type="number"]::placeholder { color: #6E7681; font-weight: 500; font-size: 0.8em; }
+
+        .valor-linha label {
+            display: block;
+            font-size: 0.88em;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+
+        .valor-wrap { position: relative; }
+
+        .valor-wrap input { font-size: 1.05em; text-align: left; padding-left: 14px; padding-right: 48px; }
+
+        .valor-wrap .sufixo {
+            position: absolute;
+            right: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            font-weight: 600;
+            pointer-events: none;
+        }
+
+        .atalhos { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+
+        .atalho {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            border-radius: 999px;
+            padding: 3px 12px;
+            font-size: 0.82em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: color 0.3s, border-color 0.3s;
+        }
+
+        .atalho:hover { color: var(--accent); border-color: var(--accent); }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            background: var(--accent);
+            color: var(--bg-primary);
+            border: 2px solid var(--accent);
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 1em;
+            cursor: pointer;
+            transition: 0.3s;
+            text-decoration: none;
+        }
+
+        .btn:hover {
+            background: var(--accent-hover);
+            border-color: var(--accent-hover);
+            box-shadow: 0 0 12px rgba(88, 166, 255, 0.3);
+        }
+
+        .btn:disabled { opacity: 0.6; cursor: wait; }
+
+        .status { min-height: 1.2em; font-size: 0.88em; text-align: center; }
+        .status.error { color: var(--error); }
+        .status.success { color: var(--success); }
+
+        /* --- ODDs --- */
+        .odds {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 6px;
+        }
+
+        .odd {
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 6px 4px;
+            text-align: center;
+            min-width: 0;
+        }
+
+        .odd small {
+            display: block;
+            color: var(--text-muted);
+            font-size: 0.72em;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .odd strong { color: var(--accent); font-size: 1.05em; }
+        .odd.destaque { border-color: var(--accent); background: rgba(88, 166, 255, 0.08); }
+
+        .sem-odds {
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.9em;
+            border: 1px dashed var(--border);
+            border-radius: 8px;
+            padding: 10px;
+        }
+
+        .retorno {
+            background: rgba(63, 185, 80, 0.06);
+            border: 1px solid rgba(63, 185, 80, 0.25);
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-size: 0.86em;
+            color: var(--text-muted);
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .retorno strong { color: var(--success); }
+        .retorno[hidden] { display: none; }
+
+        .admin-odds { border-top: 1px dashed var(--border); padding-top: 12px; }
+
+        .btn-editar-odds {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            font-size: 0.85em;
+            cursor: pointer;
+            padding: 2px 0;
+        }
+
+        .btn-editar-odds:hover { color: var(--accent); }
+
+        .form-odds { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+        .form-odds .odds input { font-size: 1em; padding: 8px 4px; }
+        .form-odds .linha-botoes { display: flex; gap: 8px; }
+        .form-odds .linha-botoes .btn { flex: 1; padding: 8px 12px; }
+        .btn-secundario {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            border-radius: 8px;
+            padding: 8px 12px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .ja-apostei {
+            background: rgba(63, 185, 80, 0.08);
+            border: 1px solid rgba(63, 185, 80, 0.35);
+            color: var(--success);
+            border-radius: 10px;
+            padding: 12px;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        .ja-apostei small { display: block; color: var(--text-muted); font-weight: 500; margin-top: 2px; }
+
+        .vazio, .carregando {
+            text-align: center;
+            color: var(--text-muted);
+            padding: 50px 20px;
+            border: 1px dashed var(--border);
+            border-radius: 15px;
+        }
+
+        .vazio i { font-size: 2em; color: var(--accent); margin-bottom: 12px; display: block; }
+        .vazio .btn { margin-top: 16px; }
+
+        footer {
+            background: var(--nav-bg);
+            color: var(--text-muted);
+            text-align: center;
+            padding: 24px 20px;
+            border-top: 1px solid var(--border);
+            font-size: 0.9em;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .btn, .card, .atalho { transition: none; }
+        }
+
+        @media (max-width: 700px) {
+            :root { --nav-height: 64px; }
+            nav { padding: 0 16px; }
+            nav .logo span { display: none; }
+            .usuario-nome { display: none; }
+            .nav-direita { gap: 10px; }
+            main { padding: calc(var(--nav-height) + 28px) 16px 40px; }
+            .cabecalho h1 { font-size: 1.6em; }
+            .grid { grid-template-columns: 1fr; }
+        }
+
+        /* --- Gestão de contas --- */
+        .barra {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            margin-bottom: 18px;
+            flex-wrap: wrap;
+        }
+        .busca {
+            flex: 1;
+            min-width: 220px;
+            position: relative;
+        }
+        .busca i { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--text-muted); }
+        .busca input, .campo {
+            width: 100%;
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px 14px;
+            color: var(--text-main);
+            font-size: 0.95em;
+        }
+        .busca input { padding-left: 40px; }
+        .busca input:focus, .campo:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.2); }
+        .resumo { color: var(--text-muted); font-size: 0.9em; }
+        .resumo strong { color: var(--text-main); }
+
+        .contas { display: flex; flex-direction: column; gap: 12px; }
+        .conta {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px 18px;
+        }
+        .conta.bloqueada { opacity: 0.7; border-style: dashed; }
+        .conta-topo {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            flex-wrap: wrap;
+        }
+        .avatar {
+            width: 40px; height: 40px; border-radius: 50%;
+            background: rgba(88, 166, 255, 0.12);
+            color: var(--accent);
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 700; text-transform: uppercase; flex-shrink: 0;
+        }
+        .conta-nome { flex: 1; min-width: 140px; }
+        .conta-nome strong { font-size: 1.05em; }
+        .conta-nome small { display: block; color: var(--text-muted); font-size: 0.82em; }
+        .selo {
+            display: inline-block; margin-left: 6px; border-radius: 999px; padding: 1px 8px;
+            font-size: 0.72em; font-weight: 700; vertical-align: middle;
+        }
+        .selo.admin { background: rgba(88, 166, 255, 0.12); color: var(--accent); border: 1px solid rgba(88, 166, 255, 0.35); }
+        .selo.bloq { background: rgba(248, 81, 73, 0.1); color: var(--error); border: 1px solid rgba(248, 81, 73, 0.35); }
+        .selo.voce { background: rgba(139, 148, 158, 0.12); color: var(--text-muted); border: 1px solid var(--border); }
+        .conta-saldo { text-align: right; }
+        .conta-saldo strong { color: var(--accent); font-size: 1.15em; }
+        .conta-saldo small { display: block; color: var(--text-muted); font-size: 0.8em; }
+
+        .acoes { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+        .acao {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            border-radius: 8px;
+            padding: 6px 12px;
+            font-size: 0.85em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: color 0.3s, border-color 0.3s;
+        }
+        .acao:hover { color: var(--accent); border-color: var(--accent); }
+        .acao.perigo:hover { color: var(--error); border-color: var(--error); }
+        .acao:disabled { opacity: 0.4; cursor: not-allowed; }
+        .acao:disabled:hover { color: var(--text-main); border-color: var(--border); }
+
+        .painel {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px dashed var(--border);
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .painel .campo { width: auto; flex: 1; min-width: 160px; }
+        .painel .btn { padding: 8px 16px; font-size: 0.9em; }
+        .painel .status { width: 100%; text-align: left; }
+    </style>
+</head>
+<body>
+    <header>
+        <nav>
+            <a href="participar.html" class="logo"><i class="fas fa-futbol" aria-hidden="true"></i> <span>Energia.CARVALHO</span></a>
+            <div class="nav-direita">
+                <a href="participar.html" class="link-nav"><i class="fas fa-list"></i> Bolões</a>
+                <a href="novo-bolao.html" class="link-nav"><i class="fas fa-plus"></i> Novo bolão</a>
+                <span class="coin-chip" title="Seu saldo em Jussana Coins"><i class="fas fa-coins" aria-hidden="true"></i> <span id="saldo">...</span> JC</span>
+                <button class="btn-sair" id="sair" type="button"><i class="fas fa-right-from-bracket"></i> Sair</button>
+            </div>
+        </nav>
+    </header>
+
+    <main>
+        <div class="cabecalho">
+            <h1>Contas</h1>
+            <p>Gerencie saldos, senhas e permissões da galera.</p>
+        </div>
+
+        <div class="barra" id="barra" hidden>
+            <div class="busca">
+                <i class="fas fa-magnifying-glass" aria-hidden="true"></i>
+                <input type="search" id="filtro" placeholder="Buscar por usuário" aria-label="Buscar por usuário">
+            </div>
+            <span class="resumo" id="resumo"></span>
+        </div>
+
+        <div id="contas" class="contas" aria-live="polite">
+            <p class="carregando">Carregando contas...</p>
+        </div>
+    </main>
+
+    <footer>
+        Energia.CARVALHO · Bolão entre amigos · Jussana Coin não tem valor em dinheiro
+    </footer>
+
+<script src="config.js"></script>
+<script>
+    function lerSessao() {
+        try { return localStorage.getItem('kanvira_token'); } catch (e) { return null; }
+    }
+
+    function sair() {
+        try {
+            localStorage.removeItem('kanvira_token');
+            localStorage.removeItem('kanvira_usuario');
+        } catch (e) { /* ignora */ }
+        window.location.href = 'index.html';
+    }
+
+    const token = lerSessao();
+    if (!token) window.location.href = 'index.html';
+    document.getElementById('sair').addEventListener('click', sair);
+
+    async function api(rota, opcoes = {}) {
+        const response = await kanviraFetch(`${API_URL}${rota}`, {
+            ...opcoes,
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        });
+        if (response.status === 401) { sair(); throw new Error('sessão expirada'); }
+        const dados = await response.json().catch(() => ({}));
+        return { ok: response.ok, dados };
+    }
+
+    const fmtJC = n => Number(n).toLocaleString('pt-BR');
+    const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const erroDe = (dados, padrao) => typeof dados.detail === 'string' ? dados.detail : padrao;
+
+    let contas = [];
+    let meuId = null;
+    const lista = document.getElementById('contas');
+
+    function htmlConta(c) {
+        const souEu = c.id === meuId;
+        const desde = new Date(c.criado_em + (c.criado_em.endsWith('Z') ? '' : 'Z')).toLocaleDateString('pt-BR');
+        return `<article class="conta ${c.ativo ? '' : 'bloqueada'}" data-id="${c.id}">
+            <div class="conta-topo">
+                <span class="avatar" aria-hidden="true">${esc(c.username[0])}</span>
+                <div class="conta-nome">
+                    <strong>${esc(c.username)}</strong>
+                    ${c.is_admin ? '<span class="selo admin">ADMIN</span>' : ''}
+                    ${c.ativo ? '' : '<span class="selo bloq">BLOQUEADA</span>'}
+                    ${souEu ? '<span class="selo voce">VOCÊ</span>' : ''}
+                    <small>Desde ${desde} · ${c.total_apostas} palpite${c.total_apostas === 1 ? '' : 's'} · ${fmtJC(c.total_apostado)} JC apostadas</small>
+                </div>
+                <div class="conta-saldo"><strong>${fmtJC(c.saldo)} JC</strong><small>saldo</small></div>
+            </div>
+            <div class="acoes">
+                <button type="button" class="acao" data-acao="saldo"><i class="fas fa-coins"></i> Ajustar saldo</button>
+                <button type="button" class="acao" data-acao="senha"><i class="fas fa-key"></i> Redefinir senha</button>
+                <button type="button" class="acao" data-acao="admin" ${souEu ? 'disabled title="Você não pode tirar seu próprio admin"' : ''}>
+                    <i class="fas fa-user-shield"></i> ${c.is_admin ? 'Remover admin' : 'Tornar admin'}</button>
+                <button type="button" class="acao perigo" data-acao="bloqueio" ${souEu ? 'disabled title="Você não pode bloquear sua própria conta"' : ''}>
+                    <i class="fas ${c.ativo ? 'fa-lock' : 'fa-lock-open'}"></i> ${c.ativo ? 'Bloquear' : 'Desbloquear'}</button>
+            </div>
+            <div class="painel-slot"></div>
+        </article>`;
+    }
+
+    function renderizar() {
+        const termo = document.getElementById('filtro').value.trim().toLowerCase();
+        const visiveis = contas.filter(c => c.username.includes(termo));
+        const totalJC = contas.reduce((s, c) => s + c.saldo, 0);
+        document.getElementById('resumo').innerHTML =
+            `<strong>${contas.length}</strong> conta${contas.length === 1 ? '' : 's'} · <strong>${fmtJC(totalJC)}</strong> JC em circulação`;
+        lista.innerHTML = visiveis.length
+            ? visiveis.map(htmlConta).join('')
+            : '<p class="vazio">Nenhuma conta encontrada.</p>';
+    }
+
+    function atualizarConta(atualizada) {
+        contas = contas.map(c => c.id === atualizada.id ? atualizada : c);
+        renderizar();
+    }
+
+    document.getElementById('filtro').addEventListener('input', renderizar);
+
+    // Painéis de saldo e senha (abrem embaixo da conta)
+    function abrirPainel(card, tipo) {
+        const slot = card.querySelector('.painel-slot');
+        if (slot.dataset.tipo === tipo) { slot.innerHTML = ''; slot.dataset.tipo = ''; return; }
+        slot.dataset.tipo = tipo;
+        slot.innerHTML = tipo === 'saldo' ? `
+            <form class="painel" data-form="saldo" novalidate>
+                <input class="campo" type="number" name="valor" step="1" inputmode="numeric" placeholder="Ex: 500 para dar, -200 para tirar" aria-label="Ajuste de saldo">
+                <button type="submit" class="btn"><i class="fas fa-check"></i> Aplicar</button>
+                <p class="status" role="status"></p>
+            </form>` : `
+            <form class="painel" data-form="senha" novalidate>
+                <input class="campo" type="text" name="nova_senha" minlength="6" autocomplete="off" placeholder="Nova senha (mín. 6 caracteres)" aria-label="Nova senha">
+                <button type="submit" class="btn"><i class="fas fa-check"></i> Salvar senha</button>
+                <p class="status" role="status">Passe a nova senha para a pessoa. Ela pode continuar usando depois.</p>
+            </form>`;
+        slot.querySelector('input').focus();
+    }
+
+    lista.addEventListener('click', async e => {
+        const botao = e.target.closest('.acao');
+        if (!botao || botao.disabled) return;
+        const card = botao.closest('.conta');
+        const conta = contas.find(c => c.id === +card.dataset.id);
+        const acao = botao.dataset.acao;
+
+        if (acao === 'saldo' || acao === 'senha') return abrirPainel(card, acao);
+
+        const mudanca = acao === 'admin' ? { is_admin: !conta.is_admin } : { ativo: !conta.ativo };
+        const pergunta = acao === 'admin'
+            ? (conta.is_admin ? `Remover o admin de ${conta.username}?` : `Tornar ${conta.username} admin? Ele poderá criar bolões e gerenciar contas.`)
+            : (conta.ativo ? `Bloquear ${conta.username}? Ele não vai conseguir entrar.` : `Desbloquear ${conta.username}?`);
+        if (!confirm(pergunta)) return;
+
+        botao.disabled = true;
+        try {
+            const { ok, dados } = await api(`/admin/usuarios/${conta.id}`, { method: 'PATCH', body: JSON.stringify(mudanca) });
+            if (ok) atualizarConta(dados);
+            else { alert(erroDe(dados, 'Não foi possível alterar a conta.')); botao.disabled = false; }
+        } catch (err) { botao.disabled = false; }
+    });
+
+    lista.addEventListener('submit', async e => {
+        e.preventDefault();
+        const form = e.target;
+        const card = form.closest('.conta');
+        const id = +card.dataset.id;
+        const status = form.querySelector('.status');
+        const setStatus = (t, tipo = '') => { status.textContent = t; status.className = 'status ' + tipo; };
+        const botao = form.querySelector('button[type="submit"]');
+
+        try {
+            if (form.dataset.form === 'saldo') {
+                const valor = parseInt(form.valor.value, 10);
+                if (!valor) return setStatus('Digite um valor diferente de zero (negativo para tirar).', 'error');
+                botao.disabled = true;
+                const { ok, dados } = await api(`/admin/usuarios/${id}/saldo`, { method: 'POST', body: JSON.stringify({ valor }) });
+                if (ok) {
+                    atualizarConta(dados);
+                    if (id === meuId) document.getElementById('saldo').textContent = fmtJC(dados.saldo);
+                } else { setStatus(erroDe(dados, 'Não foi possível ajustar.'), 'error'); botao.disabled = false; }
+            } else {
+                const nova_senha = form.nova_senha.value;
+                if (nova_senha.length < 6) return setStatus('A senha precisa ter pelo menos 6 caracteres.', 'error');
+                botao.disabled = true;
+                const { ok, dados } = await api(`/admin/usuarios/${id}/senha`, { method: 'POST', body: JSON.stringify({ nova_senha }) });
+                if (ok) { form.nova_senha.value = ''; setStatus('Senha redefinida! Passe a nova senha para a pessoa.', 'success'); }
+                else setStatus(erroDe(dados, 'Não foi possível redefinir.'), 'error');
+                botao.disabled = false;
+            }
+        } catch (err) {
+            if (err.message !== 'sessão expirada') setStatus('Erro de conexão com o servidor.', 'error');
+            botao.disabled = false;
+        }
+    });
+
+    async function iniciar() {
+        try {
+            const { ok, dados: eu } = await api('/auth/me');
+            if (!ok) throw new Error();
+            document.getElementById('saldo').textContent = fmtJC(eu.saldo);
+            if (!eu.is_admin) {
+                lista.innerHTML = '<div class="vazio"><i class="fas fa-lock"></i> Área só para o administrador.<br><a class="btn" href="participar.html">Ver bolões</a></div>';
+                return;
+            }
+            meuId = eu.id;
+            const resp = await api('/admin/usuarios');
+            if (!resp.ok) throw new Error();
+            contas = resp.dados;
+            document.getElementById('barra').hidden = false;
+            renderizar();
+        } catch (err) {
+            if (err.message === 'sessão expirada') return;
+            lista.innerHTML = '<p class="vazio">Não foi possível conectar ao servidor.</p>';
+        }
+    }
+
+    if (token) iniciar();
+</script>
+</body>
+</html>

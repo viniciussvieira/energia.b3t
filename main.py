@@ -8,7 +8,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 import models, schemas
-from auth import criar_token, gerar_hash_senha, usuario_atual, verificar_senha
+from auth import admin_atual, criar_token, gerar_hash_senha, usuario_atual, verificar_senha
 from database import engine, get_db
 from times import buscar_times, pre_carregar_times
 
@@ -21,7 +21,11 @@ def migrar_banco():
     novas de 'apostas' num kanvira.db criado antes do login/Jussana Coins."""
     colunas = {c["name"] for c in inspect(engine).get_columns("apostas")}
     colunas_bolao = {c["name"] for c in inspect(engine).get_columns("bolao_issues")}
+    colunas_usuario = {c["name"] for c in inspect(engine).get_columns("usuarios")}
     with engine.begin() as conn:
+        if "ativo" not in colunas_usuario:
+            verdadeiro = "1" if engine.dialect.name == "sqlite" else "TRUE"
+            conn.execute(text(f"ALTER TABLE usuarios ADD COLUMN ativo BOOLEAN DEFAULT {verdadeiro}"))
         for coluna in ("escudo_a", "escudo_b"):
             if coluna not in colunas_bolao:
                 conn.execute(text(f"ALTER TABLE bolao_issues ADD COLUMN {coluna} VARCHAR"))
@@ -94,7 +98,88 @@ def login(dados: schemas.UsuarioLogin, db: Session = Depends(get_db)):
     usuario = db.query(models.Usuario).filter(models.Usuario.username == dados.username.strip().lower()).first()
     if not usuario or not verificar_senha(dados.senha, usuario.senha_hash):
         raise HTTPException(status_code=401, detail="Usuário ou senha incorretos.")
+    if usuario.ativo is False:
+        raise HTTPException(status_code=403, detail="Sua conta está bloqueada. Fale com o administrador.")
     return {"access_token": criar_token(usuario.id), "usuario": usuario}
+
+
+# --- Gestão de contas (só admin) ---
+def _conta_ou_404(db: Session, usuario_id: int) -> models.Usuario:
+    conta = db.get(models.Usuario, usuario_id)
+    if not conta:
+        raise HTTPException(status_code=404, detail="Conta não encontrada.")
+    return conta
+
+
+def _conta_admin(db: Session, conta: models.Usuario) -> dict:
+    total, apostado = (
+        db.query(func.count(models.Aposta.id), func.coalesce(func.sum(models.Aposta.valor), 0))
+        .filter(models.Aposta.usuario_id == conta.id)
+        .one()
+    )
+    return {
+        "id": conta.id, "username": conta.username, "saldo": conta.saldo,
+        "is_admin": bool(conta.is_admin), "ativo": conta.ativo is not False,
+        "criado_em": conta.criado_em, "total_apostas": total, "total_apostado": apostado,
+    }
+
+
+@app.get("/api/v1/admin/usuarios", response_model=List[schemas.ContaAdmin])
+def listar_contas(db: Session = Depends(get_db), admin: models.Usuario = Depends(admin_atual)):
+    contas = db.query(models.Usuario).order_by(models.Usuario.username).all()
+    return [_conta_admin(db, c) for c in contas]
+
+
+@app.post("/api/v1/admin/usuarios/{usuario_id}/saldo", response_model=schemas.ContaAdmin)
+def ajustar_saldo(
+    usuario_id: int,
+    ajuste: schemas.AjusteSaldo,
+    db: Session = Depends(get_db),
+    admin: models.Usuario = Depends(admin_atual),
+):
+    conta = _conta_ou_404(db, usuario_id)
+    # Um único UPDATE: soma o ajuste só se o saldo não ficar negativo
+    alterou = db.execute(
+        text("UPDATE usuarios SET saldo = saldo + :v WHERE id = :id AND saldo + :v >= 0"),
+        {"v": ajuste.valor, "id": conta.id},
+    ).rowcount
+    if not alterou:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=f"O saldo não pode ficar negativo. Saldo atual: {conta.saldo} JC.")
+    db.commit()
+    db.refresh(conta)
+    return _conta_admin(db, conta)
+
+
+@app.patch("/api/v1/admin/usuarios/{usuario_id}", response_model=schemas.ContaAdmin)
+def alterar_conta(
+    usuario_id: int,
+    dados: schemas.AlteracaoConta,
+    db: Session = Depends(get_db),
+    admin: models.Usuario = Depends(admin_atual),
+):
+    conta = _conta_ou_404(db, usuario_id)
+    if conta.id == admin.id and (dados.is_admin is False or dados.ativo is False):
+        raise HTTPException(status_code=400, detail="Você não pode bloquear nem tirar o admin da sua própria conta.")
+    if dados.is_admin is not None:
+        conta.is_admin = dados.is_admin
+    if dados.ativo is not None:
+        conta.ativo = dados.ativo
+    db.commit()
+    db.refresh(conta)
+    return _conta_admin(db, conta)
+
+
+@app.post("/api/v1/admin/usuarios/{usuario_id}/senha", status_code=status.HTTP_204_NO_CONTENT)
+def redefinir_senha(
+    usuario_id: int,
+    dados: schemas.NovaSenha,
+    db: Session = Depends(get_db),
+    admin: models.Usuario = Depends(admin_atual),
+):
+    conta = _conta_ou_404(db, usuario_id)
+    conta.senha_hash = gerar_hash_senha(dados.nova_senha)
+    db.commit()
 
 
 @app.get("/api/v1/auth/me", response_model=schemas.UsuarioResponse)
@@ -219,8 +304,8 @@ def listar_boloes_abertos(
             "odd_fora": b.odd_fora,
             "odd_placar": b.odd_placar,
             "data_encerramento": b.data_encerramento,
-            "total_apostas": total,
-            "pote": pote,
+            "total_apostas": total if usuario.is_admin else None,  # só o admin vê
+            "pote": pote if usuario.is_admin else None,  # só o admin vê o pote
             "minha_aposta": minha and {
                 "gols_time_a": minha.gols_time_a,
                 "gols_time_b": minha.gols_time_b,

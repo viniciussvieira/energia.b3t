@@ -466,6 +466,7 @@
             <a href="participar.html" class="logo"><i class="fas fa-futbol" aria-hidden="true"></i> <span>Energia.CARVALHO</span></a>
             <div class="nav-direita">
                 <a href="novo-bolao.html" class="link-nav" id="link-admin" hidden><i class="fas fa-plus"></i> Novo bolão</a>
+                <a href="contas.html" class="link-nav" id="link-contas" hidden><i class="fas fa-users-gear"></i> Contas</a>
                 <span class="usuario-nome">Olá, <strong id="nome-usuario">...</strong></span>
                 <span class="coin-chip" title="Seu saldo em Jussana Coins"><i class="fas fa-coins" aria-hidden="true"></i> <span id="saldo">...</span> JC</span>
                 <button class="btn-sair" id="sair" type="button"><i class="fas fa-right-from-bracket"></i> Sair</button>
@@ -647,10 +648,10 @@
                 <span class="vs">x</span>
                 <span class="time">${htmlEscudo(b.escudo_b)}<span>${esc(b.time_b)}</span></span>
             </div>
-            <div class="stats">
+            ${b.total_apostas != null ? `<div class="stats" title="Só o admin vê">
                 <span><i class="fas fa-users"></i><strong>${b.total_apostas}</strong> palpite${b.total_apostas === 1 ? '' : 's'}</span>
-                <span><i class="fas fa-trophy"></i>Pote <strong>${fmtJC(b.pote)}</strong> JC</span>
-            </div>
+                ${b.pote != null ? `<span><i class="fas fa-trophy"></i>Pote <strong>${fmtJC(b.pote)}</strong> JC</span>` : ''}
+            </div>` : ''}
             ${htmlOdds(b, b.minha_aposta ? resultadoDo(b.minha_aposta.gols_time_a, b.minha_aposta.gols_time_b) : null)}
             <div class="corpo">${corpo}</div>
             ${isAdmin ? htmlAdminOdds(b) : ''}
@@ -800,6 +801,7 @@
             isAdmin = usuario.is_admin;
             document.getElementById('nome-usuario').textContent = usuario.username;
             document.getElementById('link-admin').hidden = !isAdmin;
+            document.getElementById('link-contas').hidden = !isAdmin;
             atualizarSaldo(usuario.saldo);
             await carregarBoloes();
         } catch (err) {

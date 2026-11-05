@@ -112,8 +112,8 @@ class BolaoAberto(BaseModel):
     odd_fora: Optional[float] = None
     odd_placar: Optional[float] = None
     data_encerramento: datetime  # UTC
-    total_apostas: int
-    pote: int  # Soma das JC apostadas
+    total_apostas: Optional[int] = None  # só enviado para o admin
+    pote: Optional[int] = None  # Soma das JC apostadas (só enviado para o admin)
     minha_aposta: Optional[MinhaAposta] = None
 
 
@@ -140,10 +140,43 @@ class UsuarioResponse(BaseModel):
     username: str
     saldo: int
     is_admin: bool
+    ativo: bool = True
     criado_em: datetime
 
     class Config:
         from_attributes = True
+
+
+# --- Gestão de contas (admin) ---
+class ContaAdmin(BaseModel):
+    id: int
+    username: str
+    saldo: int
+    is_admin: bool
+    ativo: bool
+    criado_em: datetime
+    total_apostas: int
+    total_apostado: int
+
+
+class AjusteSaldo(BaseModel):
+    valor: int = Field(..., description="Positivo para dar JC, negativo para tirar")
+
+    @field_validator('valor')
+    @classmethod
+    def nao_zero(cls, v):
+        if v == 0:
+            raise ValueError('O ajuste não pode ser zero.')
+        return v
+
+
+class AlteracaoConta(BaseModel):
+    is_admin: Optional[bool] = None
+    ativo: Optional[bool] = None
+
+
+class NovaSenha(BaseModel):
+    nova_senha: str = Field(..., min_length=6, max_length=128)
 
 
 class TokenResponse(BaseModel):

@@ -56,6 +56,7 @@ class Usuario(Base):
     senha_hash = Column(String, nullable=False)
     saldo = Column(Integer, default=1000)  # Saldo em Jussana Coins (JC)
     is_admin = Column(Boolean, default=False)  # Admin pode criar cards de bolão
+    ativo = Column(Boolean, default=True)  # Conta bloqueada pelo admin não consegue entrar
     criado_em = Column(DateTime, default=datetime.datetime.utcnow)
 
     apostas = relationship("Aposta", back_populates="usuario")
