@@ -1,4 +1,4 @@
-// Configuração compartilhada pelas páginas do Kanvira.
+// Configuração compartilhada pelas páginas do energia.carvalho.
 
 // Endereço da API online (Render). Se o Render der outro nome ao serviço, troque aqui.
 const API_ONLINE = 'https://kanvira-api.onrender.com/api/v1';
@@ -25,7 +25,7 @@ function mostrarAvisoAcordando() {
     const el = document.createElement('div');
     el.id = 'aviso-acordando';
     el.setAttribute('role', 'status');
-    el.textContent = '⏳ Acordando o servidor do Kanvira… pode levar até 1 minuto no primeiro acesso.';
+    el.textContent = '⏳ Acordando o servidor… pode levar até 1 minuto no primeiro acesso.';
     Object.assign(el.style, {
         position: 'fixed', left: '50%', bottom: '24px', transform: 'translateX(-50%)',
         maxWidth: 'calc(100% - 32px)', background: '#161B22', color: '#E6EDF3',
