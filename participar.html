@@ -423,6 +423,71 @@
             font-weight: 600;
         }
 
+        /* --- Abas --- */
+        .abas {
+            display: flex;
+            justify-content: center;
+            gap: 6px;
+            margin-bottom: 26px;
+            border-bottom: 1px solid var(--border);
+        }
+        .aba {
+            background: transparent;
+            border: none;
+            border-bottom: 2px solid transparent;
+            color: var(--text-muted);
+            padding: 10px 18px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            margin-bottom: -1px;
+        }
+        .aba:hover { color: var(--text-main); }
+        .aba[aria-selected="true"] { color: var(--accent); border-bottom-color: var(--accent); }
+        .aba .contador {
+            display: inline-block; min-width: 20px; margin-left: 6px; padding: 0 6px; border-radius: 999px;
+            background: rgba(88, 166, 255, 0.12); color: var(--accent); font-size: 0.78em;
+        }
+
+        /* Palpites já feitos dentro do card */
+        .meus-no-card {
+            background: rgba(63, 185, 80, 0.06);
+            border: 1px solid rgba(63, 185, 80, 0.3);
+            border-radius: 10px;
+            padding: 10px 12px;
+            font-size: 0.88em;
+        }
+        .meus-no-card strong { color: var(--success); display: block; margin-bottom: 4px; }
+        .meus-no-card ul { list-style: none; display: flex; flex-direction: column; gap: 3px; color: var(--text-muted); }
+        .meus-no-card li b { color: var(--text-main); }
+
+        /* Aba Meus palpites */
+        .resumo-palpites { text-align: center; color: var(--text-muted); margin-bottom: 18px; }
+        .resumo-palpites strong { color: var(--text-main); }
+        .lista-palpites { display: flex; flex-direction: column; gap: 12px; max-width: 760px; margin: 0 auto; }
+        .palpite-item {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 14px 16px;
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 10px 16px;
+            align-items: center;
+        }
+        .corpo { display: flex; flex-direction: column; gap: 14px; }
+        .pi-jogo { display: flex; align-items: center; gap: 10px; min-width: 0; }
+        .pi-jogo img, .pi-jogo .mini-vazio { width: 28px; height: 28px; object-fit: contain; flex-shrink: 0; }
+        .pi-jogo .mini-vazio { display: inline-flex; align-items: center; justify-content: center; color: var(--border); }
+        .pi-jogo .placar-palpite { font-weight: 700; font-size: 1.05em; min-width: 0; }
+        .pi-jogo .placar-palpite em { font-style: normal; color: var(--accent); margin: 0 4px; white-space: nowrap; }
+        .pi-info { grid-column: 1 / -1; display: flex; gap: 14px; flex-wrap: wrap; color: var(--text-muted); font-size: 0.85em; }
+        .pi-info b { color: var(--text-main); }
+        .pi-info .ganho b { color: var(--success); }
+        .selo-status { border-radius: 999px; padding: 2px 10px; font-size: 0.78em; font-weight: 700; white-space: nowrap; }
+        .selo-status.aberto { background: rgba(63, 185, 80, 0.1); color: var(--success); border: 1px solid rgba(63, 185, 80, 0.35); }
+        .selo-status.fechado { background: rgba(210, 153, 34, 0.1); color: #D29922; border: 1px solid rgba(210, 153, 34, 0.35); }
+
         .ja-apostei {
             background: rgba(63, 185, 80, 0.08);
             border: 1px solid rgba(63, 185, 80, 0.35);
@@ -468,6 +533,9 @@
             main { padding: calc(var(--nav-height) + 28px) 16px 40px; }
             .cabecalho h1 { font-size: 1.6em; }
             .grid { grid-template-columns: 1fr; }
+            .palpite-item { grid-template-columns: 1fr; }
+            .palpite-item .selo-status { justify-self: start; grid-row: 2; }
+            .aba { padding: 10px 12px; }
         }
     </style>
 </head>
@@ -487,11 +555,21 @@
 
     <main>
         <div class="cabecalho">
-            <h1>Bolões abertos</h1>
-            <p>Escolha o placar e quantas <strong>Jussana Coins</strong> quer arriscar. Um palpite por bolão.</p>
+            <h1 id="titulo-aba">Bolões abertos</h1>
+            <p id="sub-aba">Escolha o placar e quantas <strong>Jussana Coins</strong> quer arriscar. Pode palpitar mais de uma vez até o fechamento.</p>
         </div>
 
-        <div id="lista" class="grid" aria-live="polite">
+        <div class="abas" role="tablist">
+            <button class="aba" id="aba-boloes" role="tab" aria-selected="true" aria-controls="lista">Bolões abertos</button>
+            <button class="aba" id="aba-meus" role="tab" aria-selected="false" aria-controls="meus">Meus palpites<span class="contador" id="contador-meus" hidden></span></button>
+        </div>
+
+        <section id="meus" role="tabpanel" aria-labelledby="aba-meus" hidden>
+            <p class="resumo-palpites" id="resumo-meus"></p>
+            <div class="lista-palpites" id="lista-meus"><p class="carregando">Carregando seus palpites...</p></div>
+        </section>
+
+        <div id="lista" class="grid" role="tabpanel" aria-labelledby="aba-boloes" aria-live="polite">
             <p class="carregando">Carregando bolões...</p>
         </div>
     </main>
@@ -652,7 +730,12 @@
 
     function htmlCard(b) {
         const fecha = textoFechamento(dataUTC(b.data_encerramento));
-        const corpo = b.minha_aposta ? htmlJaApostei(b, b.minha_aposta) : !temOdds(b) ? '' : `
+        const meus = b.minhas_apostas || [];
+        const listaMeus = meus.length ? `<div class="meus-no-card">
+            <strong><i class="fas fa-check"></i> Seus palpites aqui (${meus.length})</strong>
+            <ul>${meus.map(m => `<li><b>${m.gols_time_a} x ${m.gols_time_b}</b> · ${fmtJC(m.valor)} JC${m.odd_placar ? ` · placar exato paga ${fmtJC(Math.floor(m.valor * m.odd_placar))} JC` : ''}</li>`).join('')}</ul>
+        </div>` : '';
+        const corpo = listaMeus + (!temOdds(b) ? '' : `
             <form class="palpite" data-key="${esc(b.issue_key)}" novalidate>
                 <div class="placar">
                     <input type="number" name="gols_a" min="0" max="99" inputmode="numeric" placeholder="${esc(b.time_a)}" aria-label="Gols ${esc(b.time_a)}" required>
@@ -676,7 +759,7 @@
                 <div class="retorno" hidden></div>
                 <button type="submit" class="btn"><i class="fas fa-coins"></i> Apostar</button>
                 <p class="status" role="status"></p>
-            </form>`;
+            </form>`);
 
         return `<article class="card" id="card-${esc(b.issue_key)}">
             <div class="card-topo">
@@ -692,7 +775,7 @@
                 <span><i class="fas fa-users"></i><strong>${b.total_apostas}</strong> palpite${b.total_apostas === 1 ? '' : 's'}</span>
                 ${b.pote != null ? `<span><i class="fas fa-trophy"></i>Pote <strong>${fmtJC(b.pote)}</strong> JC</span>` : ''}
             </div>` : ''}
-            ${htmlOdds(b, b.minha_aposta ? resultadoDo(b.minha_aposta.gols_time_a, b.minha_aposta.gols_time_b) : null)}
+            ${htmlOdds(b)}
             <div class="corpo">${corpo}</div>
             ${isAdmin ? htmlAdminEditar(b) : ''}
         </article>`;
@@ -819,8 +902,13 @@
 
             if (ok) {
                 atualizarSaldo(dados.saldo_atual);
-                // Recarrega a lista para atualizar pote e mostrar o palpite feito
+                // Recarrega a lista para mostrar o palpite feito no card
+                const chave = form.dataset.key;
                 await carregarBoloes();
+                const novoStatus = document.querySelector(`#card-${CSS.escape(chave)} form.palpite .status`);
+                if (novoStatus) { novoStatus.textContent = 'Palpite registrado! Pode fazer outro até o fechamento.'; novoStatus.className = 'status success'; }
+                meusCarregados = false;  // a aba "Meus palpites" recarrega quando abrir
+                atualizarContador(+1);
             } else {
                 setStatus(typeof dados.detail === 'string' ? dados.detail : 'Verifique o placar e o valor.', 'error');
                 botao.disabled = false;
@@ -833,6 +921,80 @@
 
     // --- Carregamento ---
     let isAdmin = false;
+
+    // --- Abas ---
+    let meusCarregados = false, totalMeus = null;
+    const abaBoloes = document.getElementById('aba-boloes');
+    const abaMeus = document.getElementById('aba-meus');
+
+    function mostrarAba(qual) {
+        const meus = qual === 'meus';
+        abaBoloes.setAttribute('aria-selected', !meus);
+        abaMeus.setAttribute('aria-selected', meus);
+        document.getElementById('lista').hidden = meus;
+        document.getElementById('meus').hidden = !meus;
+        document.getElementById('titulo-aba').textContent = meus ? 'Meus palpites' : 'Bolões abertos';
+        document.getElementById('sub-aba').innerHTML = meus
+            ? 'Todos os palpites que você fez, com as ODDs travadas na hora da aposta.'
+            : 'Escolha o placar e quantas <strong>Jussana Coins</strong> quer arriscar. Pode palpitar mais de uma vez até o fechamento.';
+        if (meus && !meusCarregados) carregarMeus();
+        try { history.replaceState(null, '', meus ? '#meus' : '#'); } catch (e) { /* ignora */ }
+    }
+    abaBoloes.addEventListener('click', () => mostrarAba('boloes'));
+    abaMeus.addEventListener('click', () => mostrarAba('meus'));
+
+    function atualizarContador(soma = 0) {
+        if (totalMeus === null) return;
+        totalMeus += soma;
+        const c = document.getElementById('contador-meus');
+        c.textContent = totalMeus;
+        c.hidden = totalMeus === 0;
+    }
+
+    const miniEscudo = url => url
+        ? `<img src="${esc(url)}" alt="" loading="lazy" onerror="this.outerHTML='<span class=&quot;mini-vazio&quot;><i class=&quot;fas fa-shield-halved&quot;></i></span>'">`
+        : '<span class="mini-vazio"><i class="fas fa-shield-halved"></i></span>';
+
+    function htmlMeuPalpite(p) {
+        const r = resultadoDo(p.gols_time_a, p.gols_time_b);
+        const quando = dataUTC(p.criado_em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+        const ganhos = p.odd_placar && p.odd_resultado ? `
+            <span class="ganho">Placar exato: <b>${fmtJC(Math.floor(p.valor * p.odd_placar))} JC</b> (×${fmtOdd(p.odd_placar)})</span>
+            <span class="ganho">Só o resultado (${esc(nomeResultado(p, r))}): <b>${fmtJC(Math.floor(p.valor * p.odd_resultado))} JC</b> (×${fmtOdd(p.odd_resultado)})</span>` : '';
+        return `<article class="palpite-item">
+            <div class="pi-jogo">
+                ${miniEscudo(p.escudo_a)}
+                <span class="placar-palpite">${esc(p.time_a)}<em>${p.gols_time_a} x ${p.gols_time_b}</em>${esc(p.time_b)}</span>
+                ${miniEscudo(p.escudo_b)}
+            </div>
+            <span class="selo-status ${p.aberto ? 'aberto' : 'fechado'}">${p.aberto ? 'Aberto' : 'Aguardando resultado'}</span>
+            <div class="pi-info">
+                <span><span class="tag">${esc(p.issue_key)}</span></span>
+                <span>Apostou <b>${fmtJC(p.valor)} JC</b> em ${quando}</span>
+                ${ganhos}
+            </div>
+        </article>`;
+    }
+
+    async function carregarMeus() {
+        const alvo = document.getElementById('lista-meus');
+        try {
+            const { ok, dados } = await api('/apostas/minhas');
+            if (!ok) throw new Error('falha');
+            meusCarregados = true;
+            totalMeus = dados.length;
+            atualizarContador();
+            const apostado = dados.reduce((s, p) => s + p.valor, 0);
+            document.getElementById('resumo-meus').innerHTML = dados.length
+                ? `<strong>${dados.length}</strong> palpite${dados.length === 1 ? '' : 's'} · <strong>${fmtJC(apostado)}</strong> JC apostadas`
+                : '';
+            alvo.innerHTML = dados.length
+                ? dados.map(htmlMeuPalpite).join('')
+                : '<div class="vazio"><i class="fas fa-futbol"></i> Você ainda não fez nenhum palpite.</div>';
+        } catch (err) {
+            if (err.message !== 'sessão expirada') alvo.innerHTML = '<p class="vazio">Não foi possível carregar seus palpites.</p>';
+        }
+    }
 
     async function carregarBoloes() {
         const { ok, dados } = await api('/tickets/abertos');
@@ -850,6 +1012,7 @@
             document.getElementById('link-contas').hidden = !isAdmin;
             atualizarSaldo(usuario.saldo);
             await carregarBoloes();
+            if (location.hash === '#meus') mostrarAba('meus'); else carregarMeus();
         } catch (err) {
             if (err.message === 'sessão expirada') return;
             lista.innerHTML = '<p class="vazio" style="grid-column: 1 / -1">Não foi possível conectar ao servidor. O servidor está rodando?</p>';

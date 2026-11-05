@@ -111,6 +111,23 @@ class MinhaAposta(BaseModel):
     odd_resultado: Optional[float] = None
     odd_placar: Optional[float] = None
 
+class MeuPalpite(BaseModel):
+    """Linha da aba 'Meus palpites'."""
+    id: int
+    issue_key: str
+    time_a: str
+    time_b: str
+    escudo_a: Optional[str] = None
+    escudo_b: Optional[str] = None
+    data_encerramento: datetime  # UTC
+    aberto: bool  # ainda dá para palpitar nesse bolão?
+    gols_time_a: int
+    gols_time_b: int
+    valor: int
+    odd_resultado: Optional[float] = None
+    odd_placar: Optional[float] = None
+    criado_em: datetime
+
 class BolaoAberto(BaseModel):
     """Card de bolão como aparece na tela de palpites."""
     issue_key: str
@@ -125,7 +142,7 @@ class BolaoAberto(BaseModel):
     data_encerramento: datetime  # UTC
     total_apostas: Optional[int] = None  # só enviado para o admin
     pote: Optional[int] = None  # Soma das JC apostadas (só enviado para o admin)
-    minha_aposta: Optional[MinhaAposta] = None
+    minhas_apostas: List[MinhaAposta] = []
 
 
 class TimeEncontrado(BaseModel):

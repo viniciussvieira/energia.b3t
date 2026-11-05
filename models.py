@@ -1,5 +1,5 @@
 import datetime
-from sqlalchemy import Boolean, Column, Float, Integer, String, DateTime, ForeignKey, UniqueConstraint
+from sqlalchemy import Boolean, Column, Float, Integer, String, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 from database import Base
 
@@ -26,8 +26,7 @@ class BolaoIssue(Base):
 
 class Aposta(Base):
     __tablename__ = "apostas"
-    # Cada usuário faz no máximo um palpite por bolão
-    __table_args__ = (UniqueConstraint("bolao_id", "usuario_id", name="uq_aposta_usuario_bolao"),)
+    # Cada usuário pode fazer vários palpites no mesmo bolão (até o fechamento)
 
     id = Column(Integer, primary_key=True, index=True)
     nome_usuario = Column(String, index=True)

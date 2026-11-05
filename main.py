@@ -4,7 +4,6 @@ from typing import List
 from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import func, inspect, text
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 import models, schemas
@@ -39,9 +38,10 @@ def migrar_banco():
             conn.execute(text("ALTER TABLE apostas ADD COLUMN valor INTEGER DEFAULT 0"))
         if "usuario_id" not in colunas:
             conn.execute(text("ALTER TABLE apostas ADD COLUMN usuario_id INTEGER REFERENCES usuarios(id)"))
-        conn.execute(text(
-            "CREATE UNIQUE INDEX IF NOT EXISTS uq_aposta_usuario_bolao ON apostas (bolao_id, usuario_id)"
-        ))
+        # Antes era 1 palpite por bolão; agora pode vários. Remove a trava antiga do banco.
+        if engine.dialect.name == "postgresql":
+            conn.execute(text("ALTER TABLE apostas DROP CONSTRAINT IF EXISTS uq_aposta_usuario_bolao"))
+        conn.execute(text("DROP INDEX IF EXISTS uq_aposta_usuario_bolao"))
 
 
 migrar_banco()
@@ -259,6 +259,35 @@ def editar_bolao(
     return bolao
 
 
+@app.get("/api/v1/apostas/minhas", response_model=List[schemas.MeuPalpite])
+def meus_palpites(db: Session = Depends(get_db), usuario: models.Usuario = Depends(usuario_atual)):
+    """Todos os palpites do usuário logado, do mais recente para o mais antigo."""
+    agora = datetime.utcnow()
+    linhas = (
+        db.query(models.Aposta, models.BolaoIssue)
+        .join(models.BolaoIssue, models.Aposta.bolao_id == models.BolaoIssue.id)
+        .filter(models.Aposta.usuario_id == usuario.id)
+        .order_by(models.Aposta.criado_em.desc(), models.Aposta.id.desc())
+        .all()
+    )
+    return [{
+        "id": a.id,
+        "issue_key": b.issue_key,
+        "time_a": b.time_a,
+        "time_b": b.time_b,
+        "escudo_a": b.escudo_a,
+        "escudo_b": b.escudo_b,
+        "data_encerramento": b.data_encerramento,
+        "aberto": b.data_encerramento > agora,
+        "gols_time_a": a.gols_time_a,
+        "gols_time_b": a.gols_time_b,
+        "valor": a.valor or 0,
+        "odd_resultado": a.odd_resultado,
+        "odd_placar": a.odd_placar,
+        "criado_em": a.criado_em,
+    } for a, b in linhas]
+
+
 @app.get("/api/v1/times/busca", response_model=List[schemas.TimeEncontrado])
 def buscar_time(q: str, usuario: models.Usuario = Depends(usuario_atual)):
     """Busca times pelo nome (ex: ?q=fla) e devolve o escudo de cada um."""
@@ -285,10 +314,11 @@ def listar_boloes_abertos(
             .filter(models.Aposta.bolao_id == b.id)
             .one()
         )
-        minha = (
+        minhas = (
             db.query(models.Aposta)
             .filter(models.Aposta.bolao_id == b.id, models.Aposta.usuario_id == usuario.id)
-            .first()
+            .order_by(models.Aposta.criado_em)
+            .all()
         )
         resultado.append({
             "issue_key": b.issue_key,
@@ -303,13 +333,13 @@ def listar_boloes_abertos(
             "data_encerramento": b.data_encerramento,
             "total_apostas": total if usuario.is_admin else None,  # só o admin vê
             "pote": pote if usuario.is_admin else None,  # só o admin vê o pote
-            "minha_aposta": minha and {
-                "gols_time_a": minha.gols_time_a,
-                "gols_time_b": minha.gols_time_b,
-                "valor": minha.valor or 0,
-                "odd_resultado": minha.odd_resultado,
-                "odd_placar": minha.odd_placar,
-            },
+            "minhas_apostas": [{
+                "gols_time_a": m.gols_time_a,
+                "gols_time_b": m.gols_time_b,
+                "valor": m.valor or 0,
+                "odd_resultado": m.odd_resultado,
+                "odd_placar": m.odd_placar,
+            } for m in minhas],
         })
     return resultado
 
@@ -335,14 +365,7 @@ def registrar_aposta(
     if None in (bolao.odd_casa, bolao.odd_empate, bolao.odd_fora, bolao.odd_placar):
         raise HTTPException(status_code=400, detail="Este bolão ainda não tem ODDs definidas pelo admin.")
 
-    # 3. Um palpite por pessoa em cada bolão
-    ja_apostou = (
-        db.query(models.Aposta)
-        .filter(models.Aposta.bolao_id == bolao.id, models.Aposta.usuario_id == usuario.id)
-        .first()
-    )
-    if ja_apostou:
-        raise HTTPException(status_code=409, detail="Você já fez seu palpite neste bolão.")
+    # 3. Pode fazer quantos palpites quiser até o fechamento (cada um desconta do saldo)
 
     try:
         # 4. Desconta as Jussana Coins só se houver saldo (em um único UPDATE,
@@ -370,9 +393,6 @@ def registrar_aposta(
         db.commit()
     except HTTPException:
         raise
-    except IntegrityError:
-        db.rollback()
-        raise HTTPException(status_code=409, detail="Você já fez seu palpite neste bolão.")
     except Exception:
         db.rollback()
         raise HTTPException(status_code=500, detail="Erro interno ao registrar aposta.")
