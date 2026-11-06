@@ -351,6 +351,9 @@
             nav { padding: 0 16px; }
             nav .logo span { display: none; }
             .usuario-nome { display: none; }
+            /* No celular, os links do menu mostram só o ícone */
+            .link-nav { font-size: 0; padding: 6px; border-bottom: none; }
+            .link-nav i { font-size: 18px; }
             .nav-direita { gap: 10px; }
             main { padding: calc(var(--nav-height) + 28px) 16px 40px; }
             .cabecalho h1 { font-size: 1.6em; }
@@ -417,6 +420,7 @@
             <a href="participar.html" class="logo"><i class="fas fa-futbol" aria-hidden="true"></i> <span>Energia.CARVALHO</span></a>
             <div class="nav-direita">
                 <a href="participar.html" class="link-nav"><i class="fas fa-list"></i> Bolões</a>
+                <a href="regras.html" class="link-nav"><i class="fas fa-book"></i> Regras</a>
                 <a href="contas.html" class="link-nav"><i class="fas fa-users-gear"></i> Contas</a>
                 <span class="coin-chip" title="Seu saldo em Jussana Coins"><i class="fas fa-coins" aria-hidden="true"></i> <span id="saldo">...</span> JC</span>
                 <button class="btn-sair" id="sair" type="button"><i class="fas fa-right-from-bracket"></i> Sair</button>

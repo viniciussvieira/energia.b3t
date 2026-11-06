@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Energia.CARVALHO | Regras</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        :root {
+            --bg-primary: #0D1117;
+            --bg-secondary: #161B22;
+            --text-main: #E6EDF3;
+            --text-muted: #8B949E;
+            --accent: #58A6FF;
+            --accent-hover: #79B8FF;
+            --success: #3FB950;
+            --error: #F85149;
+            --border: #30363d;
+            --nav-bg: #010409;
+            --nav-height: 70px;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        [hidden] { display: none !important; }
+
+        body {
+            background: var(--bg-primary);
+            color: var(--text-main);
+            font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        button, input { font-family: inherit; }
+
+        a:focus-visible, button:focus-visible {
+            outline: 2px solid var(--accent);
+            outline-offset: 3px;
+            border-radius: 6px;
+        }
+
+        /* --- Navegação --- */
+        nav {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%;
+            height: var(--nav-height);
+            background: var(--nav-bg);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 0 5%;
+            z-index: 10;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.4);
+            border-bottom: 1px solid var(--border);
+        }
+
+        nav .logo {
+            color: var(--text-main);
+            font-weight: 700;
+            font-size: 1.3em;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        nav .logo i { color: var(--accent); }
+
+        .nav-direita {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .coin-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(88, 166, 255, 0.1);
+            color: var(--accent);
+            border: 1px solid rgba(88, 166, 255, 0.3);
+            border-radius: 999px;
+            padding: 4px 14px;
+            font-size: 0.9em;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .usuario-nome {
+            color: var(--text-muted);
+            font-size: 0.95em;
+        }
+
+        .usuario-nome strong { color: var(--text-main); }
+
+        .link-nav {
+            color: var(--text-main);
+            text-decoration: none;
+            font-size: 0.95em;
+            padding-bottom: 3px;
+            border-bottom: 2px solid transparent;
+            transition: color 0.3s, border-color 0.3s;
+            white-space: nowrap;
+        }
+
+        .link-nav:hover { color: var(--accent); border-bottom-color: var(--accent); }
+
+        .btn-sair {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            border-radius: 8px;
+            padding: 6px 12px;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: color 0.3s, border-color 0.3s;
+        }
+
+        .btn-sair:hover { color: var(--error); border-color: var(--error); }
+
+        /* --- Conteúdo --- */
+        main {
+            flex: 1;
+            width: 100%;
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: calc(var(--nav-height) + 40px) 20px 60px;
+        }
+
+        .cabecalho { text-align: center; margin-bottom: 30px; }
+        .cabecalho h1 { font-size: 2em; margin-bottom: 6px; }
+        .cabecalho p { color: var(--text-muted); }
+        .cabecalho p strong { color: var(--text-main); }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 24px;
+        }
+
+        .card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 15px;
+            padding: 22px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            transition: border-color 0.3s;
+        }
+
+        .card:hover { border-color: rgba(88, 166, 255, 0.5); }
+
+        .card-topo {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.85em;
+        }
+
+        .tag {
+            background: rgba(88, 166, 255, 0.1);
+            color: var(--accent);
+            border: 1px solid rgba(88, 166, 255, 0.3);
+            border-radius: 999px;
+            padding: 2px 10px;
+            font-weight: 600;
+        }
+
+        .fecha { color: var(--text-muted); text-align: right; }
+        .fecha.urgente { color: #D29922; }
+
+        .confronto {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            align-items: center;
+            gap: 10px;
+            text-align: center;
+        }
+
+        .time {
+            font-weight: 700;
+            font-size: 1.15em;
+            overflow-wrap: anywhere;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .time img, .escudo-vazio {
+            width: 56px;
+            height: 56px;
+            object-fit: contain;
+            filter: drop-shadow(0 2px 6px rgba(0,0,0,0.4));
+        }
+
+        .escudo-vazio {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.2em;
+            color: var(--border);
+            filter: none;
+        }
+
+        .confronto { align-items: start; }
+        .confronto .vs { margin-top: 18px; }
+
+        .vs { color: var(--text-muted); font-weight: 600; }
+
+        .stats {
+            display: flex;
+            justify-content: center;
+            gap: 18px;
+            color: var(--text-muted);
+            font-size: 0.88em;
+        }
+
+        .stats i { margin-right: 5px; }
+        .stats strong { color: var(--text-main); }
+
+        /* Formulário de palpite */
+        .palpite { display: flex; flex-direction: column; gap: 14px; }
+
+        .placar {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .placar span { color: var(--text-muted); font-weight: 700; }
+
+        input[type="number"] {
+            width: 100%;
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px;
+            color: var(--text-main);
+            font-size: 1.3em;
+            font-weight: 700;
+            text-align: center;
+            transition: border-color 0.3s, box-shadow 0.3s;
+            -moz-appearance: textfield;
+        }
+
+        input[type="number"]::-webkit-outer-spin-button,
+        input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+        input[type="number"]:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.2);
+        }
+
+        input[type="number"]::placeholder { color: #6E7681; font-weight: 500; font-size: 0.8em; }
+
+        .valor-linha label {
+            display: block;
+            font-size: 0.88em;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+
+        .valor-wrap { position: relative; }
+
+        .valor-wrap input { font-size: 1.05em; text-align: left; padding-left: 14px; padding-right: 48px; }
+
+        .valor-wrap .sufixo {
+            position: absolute;
+            right: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            font-weight: 600;
+            pointer-events: none;
+        }
+
+        .atalhos { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+
+        .atalho {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            border-radius: 999px;
+            padding: 3px 12px;
+            font-size: 0.82em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: color 0.3s, border-color 0.3s;
+        }
+
+        .atalho:hover { color: var(--accent); border-color: var(--accent); }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            background: var(--accent);
+            color: var(--bg-primary);
+            border: 2px solid var(--accent);
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 1em;
+            cursor: pointer;
+            transition: 0.3s;
+            text-decoration: none;
+        }
+
+        .btn:hover {
+            background: var(--accent-hover);
+            border-color: var(--accent-hover);
+            box-shadow: 0 0 12px rgba(88, 166, 255, 0.3);
+        }
+
+        .btn:disabled { opacity: 0.6; cursor: wait; }
+
+        .status { min-height: 1.2em; font-size: 0.88em; text-align: center; }
+        .status.error { color: var(--error); }
+        .status.success { color: var(--success); }
+
+        /* --- ODDs --- */
+        .odds {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 6px;
+        }
+
+        .odd {
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 6px 4px;
+            text-align: center;
+            min-width: 0;
+        }
+
+        .odd small {
+            display: block;
+            color: var(--text-muted);
+            font-size: 0.72em;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .odd strong { color: var(--accent); font-size: 1.05em; }
+        .odd.destaque { border-color: var(--accent); background: rgba(88, 166, 255, 0.08); }
+
+        .sem-odds {
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.9em;
+            border: 1px dashed var(--border);
+            border-radius: 8px;
+            padding: 10px;
+        }
+
+        .retorno {
+            background: rgba(63, 185, 80, 0.06);
+            border: 1px solid rgba(63, 185, 80, 0.25);
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-size: 0.86em;
+            color: var(--text-muted);
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .retorno strong { color: var(--success); }
+        .retorno[hidden] { display: none; }
+
+        .admin-odds { border-top: 1px dashed var(--border); padding-top: 12px; }
+
+        .btn-editar-odds {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            font-size: 0.85em;
+            cursor: pointer;
+            padding: 2px 0;
+        }
+
+        .btn-editar-odds:hover { color: var(--accent); }
+
+        .form-odds { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+        .rotulo-edicao { font-size: 0.82em; font-weight: 600; color: var(--text-muted); margin-bottom: -4px; }
+        .form-editar input[type="text"] {
+            width: 100%;
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px 14px;
+            color: var(--text-main);
+            font-size: 0.95em;
+        }
+        .form-editar input[type="text"]:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.2); }
+        .form-odds .odds input { font-size: 1em; padding: 8px 4px; }
+        .form-odds .linha-botoes { display: flex; gap: 8px; }
+        .form-odds .linha-botoes .btn { flex: 1; padding: 8px 12px; }
+        .btn-secundario {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            border-radius: 8px;
+            padding: 8px 12px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        /* --- Abas --- */
+        .abas {
+            display: flex;
+            justify-content: center;
+            gap: 6px;
+            margin-bottom: 26px;
+            border-bottom: 1px solid var(--border);
+        }
+        .aba {
+            background: transparent;
+            border: none;
+            border-bottom: 2px solid transparent;
+            color: var(--text-muted);
+            padding: 10px 18px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            margin-bottom: -1px;
+        }
+        .aba:hover { color: var(--text-main); }
+        .aba[aria-selected="true"] { color: var(--accent); border-bottom-color: var(--accent); }
+        .aba .contador {
+            display: inline-block; min-width: 20px; margin-left: 6px; padding: 0 6px; border-radius: 999px;
+            background: rgba(88, 166, 255, 0.12); color: var(--accent); font-size: 0.78em;
+        }
+
+        /* Palpites já feitos dentro do card */
+        .meus-no-card {
+            background: rgba(63, 185, 80, 0.06);
+            border: 1px solid rgba(63, 185, 80, 0.3);
+            border-radius: 10px;
+            padding: 10px 12px;
+            font-size: 0.88em;
+        }
+        .meus-no-card strong { color: var(--success); display: block; margin-bottom: 4px; }
+        .meus-no-card ul { list-style: none; display: flex; flex-direction: column; gap: 3px; color: var(--text-muted); }
+        .meus-no-card li b { color: var(--text-main); }
+
+        /* Aba Meus palpites */
+        .resumo-palpites { text-align: center; color: var(--text-muted); margin-bottom: 18px; }
+        .resumo-palpites strong { color: var(--text-main); }
+        .lista-palpites { display: flex; flex-direction: column; gap: 12px; max-width: 760px; margin: 0 auto; }
+        .palpite-item {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 14px 16px;
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 10px 16px;
+            align-items: center;
+        }
+        .corpo { display: flex; flex-direction: column; gap: 14px; }
+        .pi-jogo { display: flex; align-items: center; gap: 10px; min-width: 0; }
+        .pi-jogo img, .pi-jogo .mini-vazio { width: 28px; height: 28px; object-fit: contain; flex-shrink: 0; }
+        .pi-jogo .mini-vazio { display: inline-flex; align-items: center; justify-content: center; color: var(--border); }
+        .pi-jogo .placar-palpite { font-weight: 700; font-size: 1.05em; min-width: 0; }
+        .pi-jogo .placar-palpite em { font-style: normal; color: var(--accent); margin: 0 4px; white-space: nowrap; }
+        .pi-info { grid-column: 1 / -1; display: flex; gap: 14px; flex-wrap: wrap; color: var(--text-muted); font-size: 0.85em; }
+        .pi-info b { color: var(--text-main); }
+        .pi-info .ganho b { color: var(--success); }
+        .selo-status { border-radius: 999px; padding: 2px 10px; font-size: 0.78em; font-weight: 700; white-space: nowrap; }
+        .selo-status.aberto { background: rgba(63, 185, 80, 0.1); color: var(--success); border: 1px solid rgba(63, 185, 80, 0.35); }
+        .selo-status.ganhou { background: rgba(63, 185, 80, 0.15); color: var(--success); border: 1px solid rgba(63, 185, 80, 0.5); }
+        .selo-status.perdeu { background: rgba(248, 81, 73, 0.1); color: var(--error); border: 1px solid rgba(248, 81, 73, 0.35); }
+        .selo-status.devolvido { background: rgba(139, 148, 158, 0.12); color: var(--text-muted); border: 1px solid var(--border); }
+        .palpite-item.ganhou { border-color: rgba(63, 185, 80, 0.5); }
+        .palpite-item.perdeu { opacity: 0.75; }
+        .pi-info .final b { color: var(--accent); }
+
+        /* --- Aba Resultados (admin) --- */
+        .res-titulo { max-width: 760px; margin: 26px auto 12px; font-size: 1.05em; display: flex; align-items: center; gap: 8px; }
+        .res-titulo i { color: var(--accent); }
+        .res-item {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .res-item.pendente { border-color: rgba(210, 153, 34, 0.5); }
+        .res-confronto { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 10px; }
+        .res-time { display: flex; align-items: center; gap: 10px; font-weight: 700; min-width: 0; }
+        .res-time.direita { justify-content: flex-end; text-align: right; }
+        .res-time img, .res-time .mini-vazio { width: 32px; height: 32px; object-fit: contain; flex-shrink: 0; }
+        .res-time .mini-vazio { display: inline-flex; align-items: center; justify-content: center; color: var(--border); }
+        .res-placar { display: flex; align-items: center; gap: 8px; }
+        .res-placar input { width: 64px; padding: 8px; font-size: 1.3em; }
+        .res-placar span { color: var(--text-muted); font-weight: 700; }
+        .res-final { font-size: 1.5em; font-weight: 800; color: var(--accent); white-space: nowrap; }
+        .res-info { display: flex; gap: 14px; flex-wrap: wrap; color: var(--text-muted); font-size: 0.85em; }
+        .res-info b { color: var(--text-main); }
+        .res-info .pago b { color: var(--success); }
+        .res-item .btn { align-self: stretch; }
+
+        .selo-status.fechado { background: rgba(210, 153, 34, 0.1); color: #D29922; border: 1px solid rgba(210, 153, 34, 0.35); }
+
+        .ja-apostei {
+            background: rgba(63, 185, 80, 0.08);
+            border: 1px solid rgba(63, 185, 80, 0.35);
+            color: var(--success);
+            border-radius: 10px;
+            padding: 12px;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        .ja-apostei small { display: block; color: var(--text-muted); font-weight: 500; margin-top: 2px; }
+
+        .vazio, .carregando {
+            text-align: center;
+            color: var(--text-muted);
+            padding: 50px 20px;
+            border: 1px dashed var(--border);
+            border-radius: 15px;
+        }
+
+        .vazio i { font-size: 2em; color: var(--accent); margin-bottom: 12px; display: block; }
+        .vazio .btn { margin-top: 16px; }
+
+        footer {
+            background: var(--nav-bg);
+            color: var(--text-muted);
+            text-align: center;
+            padding: 24px 20px;
+            border-top: 1px solid var(--border);
+            font-size: 0.9em;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .btn, .card, .atalho { transition: none; }
+        }
+
+        @media (max-width: 700px) {
+            :root { --nav-height: 64px; }
+            nav { padding: 0 16px; }
+            nav .logo span { display: none; }
+            .usuario-nome { display: none; }
+            /* No celular, os links do menu mostram só o ícone */
+            .link-nav { font-size: 0; padding: 6px; border-bottom: none; }
+            .link-nav i { font-size: 18px; }
+            .nav-direita { gap: 10px; }
+            main { padding: calc(var(--nav-height) + 28px) 16px 40px; }
+            .cabecalho h1 { font-size: 1.6em; }
+            .grid { grid-template-columns: 1fr; }
+            .palpite-item { grid-template-columns: 1fr; }
+            .palpite-item .selo-status { justify-self: start; grid-row: 2; }
+            .aba { padding: 10px 12px; }
+        }
+
+        /* --- Regras --- */
+        .regras { max-width: 820px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px; }
+        .bloco {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 15px;
+            padding: 22px 24px;
+        }
+        .bloco h2 { font-size: 1.15em; display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+        .bloco h2 .num {
+            width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0;
+            background: rgba(88, 166, 255, 0.12); color: var(--accent);
+            display: inline-flex; align-items: center; justify-content: center; font-size: 0.85em;
+        }
+        .bloco p, .bloco li { color: var(--text-muted); line-height: 1.7; }
+        .bloco p + p { margin-top: 8px; }
+        .bloco strong { color: var(--text-main); }
+        .bloco ul { padding-left: 20px; display: flex; flex-direction: column; gap: 4px; }
+        .bloco ul + p { margin-top: 12px; }
+        .destaque-jc { color: var(--accent); font-weight: 700; }
+
+        .odds-exemplo { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 14px 0 6px; }
+        .odds-exemplo div {
+            background: var(--bg-primary); border: 1px solid var(--border); border-radius: 10px;
+            text-align: center; padding: 8px 4px;
+        }
+        .odds-exemplo small { display: block; color: var(--text-muted); font-size: 0.78em; }
+        .odds-exemplo strong { color: var(--accent); font-size: 1.15em; }
+
+        .tabela-wrap { overflow-x: auto; margin-top: 12px; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.92em; min-width: 460px; }
+        th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border); }
+        th { color: var(--text-muted); font-weight: 600; font-size: 0.85em; text-transform: uppercase; letter-spacing: 0.03em; }
+        td { color: var(--text-main); }
+        td.ganha { color: var(--success); font-weight: 700; }
+        td.perde { color: var(--error); font-weight: 700; }
+        .placar-tab { font-weight: 700; white-space: nowrap; }
+
+        .aviso {
+            border-left: 3px solid #D29922;
+            background: rgba(210, 153, 34, 0.08);
+            border-radius: 0 10px 10px 0;
+            padding: 12px 14px;
+            margin-top: 12px;
+            color: var(--text-muted);
+        }
+        .aviso strong { color: #D29922; }
+        .voltar { text-align: center; margin-top: 8px; }
+    </style>
+</head>
+<body>
+    <header>
+        <nav>
+            <a href="index.html" class="logo" id="logo-link"><i class="fas fa-futbol" aria-hidden="true"></i> <span>Energia.CARVALHO</span></a>
+            <div class="nav-direita">
+                <a href="participar.html" class="link-nav" id="link-boloes" hidden><i class="fas fa-list"></i> Bolões</a>
+                <a href="index.html" class="link-nav" id="link-entrar"><i class="fas fa-right-to-bracket"></i> Entrar</a>
+            </div>
+        </nav>
+    </header>
+
+    <main>
+        <div class="cabecalho">
+            <h1>Regras do bolão</h1>
+            <p>Tudo que você precisa saber para palpitar com <strong>Jussana Coins</strong>.</p>
+        </div>
+
+        <div class="regras">
+            <section class="bloco">
+                <h2><span class="num">1</span> O que é</h2>
+                <p>O Energia.CARVALHO é um <strong>bolão entre amigos, só por diversão</strong>. Aqui ninguém aposta dinheiro de verdade: tudo é feito com a
+                   <span class="destaque-jc">Jussana Coin (JC)</span>, a moeda oficial do bolão.</p>
+                <p>A Jussana Coin <strong>não tem valor em dinheiro</strong> e não pode ser comprada, vendida nem trocada por nada. Vale a resenha e a posição no ranking.</p>
+            </section>
+
+            <section class="bloco">
+                <h2><span class="num">2</span> Sua conta e seu saldo</h2>
+                <ul>
+                    <li>Ao criar a conta você ganha <strong>1.000 JC</strong> de boas-vindas.</li>
+                    <li>Cada palpite desconta o valor apostado <strong>na hora</strong>.</li>
+                    <li>O saldo <strong>nunca fica negativo</strong>: só dá para apostar o que você tem.</li>
+                    <li>Só o administrador pode dar ou tirar JC de alguém (por exemplo, para repor o saldo da galera).</li>
+                </ul>
+            </section>
+
+            <section class="bloco">
+                <h2><span class="num">3</span> Como palpitar</h2>
+                <ul>
+                    <li>Na tela <strong>Bolões abertos</strong>, escolha o jogo, digite o <strong>placar</strong> que você acha que vai dar e <strong>quantas JC</strong> quer apostar.</li>
+                    <li>Você pode fazer <strong>quantos palpites quiser</strong> no mesmo jogo, cada um com o seu valor.</li>
+                    <li>Os palpites ficam abertos <strong>até o horário de fechamento</strong> mostrado no card (normalmente o início do jogo). Depois disso, não dá mais para palpitar.</li>
+                    <li>Palpite feito <strong>não pode ser cancelado</strong>.</li>
+                    <li>Acompanhe tudo na aba <strong>Meus palpites</strong>.</li>
+                </ul>
+            </section>
+
+            <section class="bloco">
+                <h2><span class="num">4</span> As ODDs</h2>
+                <p>A ODD é o <strong>multiplicador</strong> que você recebe se acertar. Cada jogo tem 4 ODDs, definidas pelo administrador:</p>
+                <div class="odds-exemplo" aria-label="Exemplo de ODDs">
+                    <div><small>Vitória Flamengo</small><strong>1.80</strong></div>
+                    <div><small>Empate</small><strong>3.20</strong></div>
+                    <div><small>Vitória Vasco</small><strong>4.50</strong></div>
+                    <div><small>Placar exato</small><strong>8.00</strong></div>
+                </div>
+                <ul>
+                    <li>Quanto <strong>maior a ODD</strong>, menos provável o resultado, e mais você ganha.</li>
+                    <li><strong>A ODD fica travada no momento do palpite.</strong> Se o admin mudar a ODD depois, vale a ODD da hora em que você apostou.</li>
+                    <li>Enquanto você preenche o palpite, a tela já mostra <strong>quanto você recebe</strong> se acertar.</li>
+                </ul>
+            </section>
+
+            <section class="bloco">
+                <h2><span class="num">5</span> Quanto você ganha</h2>
+                <ul>
+                    <li><strong>Acertou o placar exato:</strong> recebe <strong>valor × ODD de placar exato</strong>.</li>
+                    <li><strong>Acertou só o resultado</strong> (quem venceu, ou que deu empate): recebe <strong>valor × ODD daquele resultado</strong>.</li>
+                    <li><strong>Errou o resultado:</strong> não recebe nada e perde o que apostou.</li>
+                </ul>
+                <p>O prêmio <strong>já inclui</strong> o valor apostado. Acertar o placar exato paga só a ODD de placar exato; ela não soma com a ODD do resultado.</p>
+
+                <p style="margin-top:14px">Exemplo: palpite de <strong>Flamengo 2 x 1 Vasco</strong>, apostando <strong>100 JC</strong>, com as ODDs acima:</p>
+                <div class="tabela-wrap">
+                    <table>
+                        <thead><tr><th>Placar real</th><th>O que aconteceu</th><th>Você recebe</th></tr></thead>
+                        <tbody>
+                            <tr><td class="placar-tab">2 x 1</td><td>Acertou o placar exato</td><td class="ganha">800 JC (100 × 8.00)</td></tr>
+                            <tr><td class="placar-tab">3 x 0</td><td>Acertou o resultado (vitória do Flamengo)</td><td class="ganha">180 JC (100 × 1.80)</td></tr>
+                            <tr><td class="placar-tab">1 x 1</td><td>Errou: deu empate</td><td class="perde">0 JC</td></tr>
+                            <tr><td class="placar-tab">0 x 2</td><td>Errou: o Vasco venceu</td><td class="perde">0 JC</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p style="margin-top:10px">Prêmios com centavos são <strong>arredondados para baixo</strong> (ex: 7 JC × 2.35 = 16,45 → <strong>16 JC</strong>).</p>
+            </section>
+
+            <section class="bloco">
+                <h2><span class="num">6</span> Quando você recebe</h2>
+                <ul>
+                    <li>Depois do jogo, o <strong>administrador lança o placar real</strong>.</li>
+                    <li>Na mesma hora, todos os palpites são calculados e os prêmios <strong>caem direto no seu saldo</strong>.</li>
+                    <li>Em <strong>Meus palpites</strong>, cada palpite passa a mostrar <strong>Ganhou X JC</strong> ou <strong>Perdeu</strong>, com o placar final.</li>
+                </ul>
+                <div class="aviso"><strong>Importante:</strong> depois de lançado, o resultado é definitivo e não pode ser desfeito.</div>
+            </section>
+
+            <section class="bloco">
+                <h2><span class="num">7</span> O administrador</h2>
+                <p>O admin cuida do bolão: <strong>cria os jogos</strong>, define e ajusta as <strong>ODDs</strong>, lança os <strong>resultados</strong> e gerencia as contas
+                   (saldo, senha esquecida, bloqueio). Dúvidas ou problemas? Fale com ele.</p>
+            </section>
+
+            <p class="voltar"><a class="btn" href="participar.html" id="btn-voltar"><i class="fas fa-futbol"></i> Ir para os bolões</a></p>
+        </div>
+    </main>
+
+    <footer>
+        Energia.CARVALHO · Bolão entre amigos · Jussana Coin não tem valor em dinheiro
+    </footer>
+
+<script>
+    // Página aberta para todos. Se estiver logado, os links levam para os bolões; se não, para o login.
+    let logado = false;
+    try { logado = !!localStorage.getItem('kanvira_token'); } catch (e) { /* ignora */ }
+    document.getElementById('link-boloes').hidden = !logado;
+    document.getElementById('link-entrar').hidden = logado;
+    if (!logado) {
+        const b = document.getElementById('btn-voltar');
+        b.href = 'index.html#cadastro';
+        b.innerHTML = '<i class="fas fa-user-plus"></i> Criar minha conta';
+    } else {
+        document.getElementById('logo-link').href = 'participar.html';
+    }
+</script>
+</body>
+</html>

@@ -486,6 +486,40 @@
         .pi-info .ganho b { color: var(--success); }
         .selo-status { border-radius: 999px; padding: 2px 10px; font-size: 0.78em; font-weight: 700; white-space: nowrap; }
         .selo-status.aberto { background: rgba(63, 185, 80, 0.1); color: var(--success); border: 1px solid rgba(63, 185, 80, 0.35); }
+        .selo-status.ganhou { background: rgba(63, 185, 80, 0.15); color: var(--success); border: 1px solid rgba(63, 185, 80, 0.5); }
+        .selo-status.perdeu { background: rgba(248, 81, 73, 0.1); color: var(--error); border: 1px solid rgba(248, 81, 73, 0.35); }
+        .selo-status.devolvido { background: rgba(139, 148, 158, 0.12); color: var(--text-muted); border: 1px solid var(--border); }
+        .palpite-item.ganhou { border-color: rgba(63, 185, 80, 0.5); }
+        .palpite-item.perdeu { opacity: 0.75; }
+        .pi-info .final b { color: var(--accent); }
+
+        /* --- Aba Resultados (admin) --- */
+        .res-titulo { max-width: 760px; margin: 26px auto 12px; font-size: 1.05em; display: flex; align-items: center; gap: 8px; }
+        .res-titulo i { color: var(--accent); }
+        .res-item {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .res-item.pendente { border-color: rgba(210, 153, 34, 0.5); }
+        .res-confronto { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 10px; }
+        .res-time { display: flex; align-items: center; gap: 10px; font-weight: 700; min-width: 0; }
+        .res-time.direita { justify-content: flex-end; text-align: right; }
+        .res-time img, .res-time .mini-vazio { width: 32px; height: 32px; object-fit: contain; flex-shrink: 0; }
+        .res-time .mini-vazio { display: inline-flex; align-items: center; justify-content: center; color: var(--border); }
+        .res-placar { display: flex; align-items: center; gap: 8px; }
+        .res-placar input { width: 64px; padding: 8px; font-size: 1.3em; }
+        .res-placar span { color: var(--text-muted); font-weight: 700; }
+        .res-final { font-size: 1.5em; font-weight: 800; color: var(--accent); white-space: nowrap; }
+        .res-info { display: flex; gap: 14px; flex-wrap: wrap; color: var(--text-muted); font-size: 0.85em; }
+        .res-info b { color: var(--text-main); }
+        .res-info .pago b { color: var(--success); }
+        .res-item .btn { align-self: stretch; }
+
         .selo-status.fechado { background: rgba(210, 153, 34, 0.1); color: #D29922; border: 1px solid rgba(210, 153, 34, 0.35); }
 
         .ja-apostei {
@@ -529,6 +563,9 @@
             nav { padding: 0 16px; }
             nav .logo span { display: none; }
             .usuario-nome { display: none; }
+            /* No celular, os links do menu mostram só o ícone */
+            .link-nav { font-size: 0; padding: 6px; border-bottom: none; }
+            .link-nav i { font-size: 18px; }
             .nav-direita { gap: 10px; }
             main { padding: calc(var(--nav-height) + 28px) 16px 40px; }
             .cabecalho h1 { font-size: 1.6em; }
@@ -543,7 +580,7 @@
     <header>
         <nav>
             <a href="participar.html" class="logo"><i class="fas fa-futbol" aria-hidden="true"></i> <span>Energia.CARVALHO</span></a>
-            <div class="nav-direita">
+            <div class="nav-direita">                <a href="regras.html" class="link-nav"><i class="fas fa-book"></i> Regras</a>
                 <a href="novo-bolao.html" class="link-nav" id="link-admin" hidden><i class="fas fa-plus"></i> Novo bolão</a>
                 <a href="contas.html" class="link-nav" id="link-contas" hidden><i class="fas fa-users-gear"></i> Contas</a>
                 <span class="usuario-nome">Olá, <strong id="nome-usuario">...</strong></span>
@@ -562,7 +599,12 @@
         <div class="abas" role="tablist">
             <button class="aba" id="aba-boloes" role="tab" aria-selected="true" aria-controls="lista">Bolões abertos</button>
             <button class="aba" id="aba-meus" role="tab" aria-selected="false" aria-controls="meus">Meus palpites<span class="contador" id="contador-meus" hidden></span></button>
+            <button class="aba" id="aba-resultados" role="tab" aria-selected="false" aria-controls="resultados" hidden>Resultados<span class="contador" id="contador-resultados" hidden></span></button>
         </div>
+
+        <section id="resultados" role="tabpanel" aria-labelledby="aba-resultados" hidden>
+            <div class="lista-palpites" id="lista-resultados"><p class="carregando">Carregando...</p></div>
+        </section>
 
         <section id="meus" role="tabpanel" aria-labelledby="aba-meus" hidden>
             <p class="resumo-palpites" id="resumo-meus"></p>
@@ -641,6 +683,8 @@
 
     // --- Renderização ---
     const fmtOdd = o => Number(o).toFixed(2);
+    // valor × ODD arredondado para baixo, igual ao servidor (100 × 2.3 = 230, não 229)
+    const multiplicar = (valor, odd) => Math.floor(Math.round(valor * odd * 1e6) / 1e6);
     const temOdds = b => [b.odd_casa, b.odd_empate, b.odd_fora, b.odd_placar].every(o => o != null);
 
     // Qual resultado o placar indica: 'casa', 'empate' ou 'fora'
@@ -662,7 +706,7 @@
     function htmlJaApostei(b, m) {
         const r = resultadoDo(m.gols_time_a, m.gols_time_b);
         const ganhos = m.odd_placar && m.odd_resultado
-            ? `<small>Acertando o placar: <b>${fmtJC(Math.floor(m.valor * m.odd_placar))} JC</b> · Só o resultado (${esc(nomeResultado(b, r))}): <b>${fmtJC(Math.floor(m.valor * m.odd_resultado))} JC</b></small>`
+            ? `<small>Acertando o placar: <b>${fmtJC(multiplicar(m.valor, m.odd_placar))} JC</b> · Só o resultado (${esc(nomeResultado(b, r))}): <b>${fmtJC(multiplicar(m.valor, m.odd_resultado))} JC</b></small>`
             : '';
         return `<div class="ja-apostei">
             <i class="fas fa-check"></i> Seu palpite: ${esc(b.time_a)} ${m.gols_time_a} x ${m.gols_time_b} ${esc(b.time_b)}
@@ -733,7 +777,7 @@
         const meus = b.minhas_apostas || [];
         const listaMeus = meus.length ? `<div class="meus-no-card">
             <strong><i class="fas fa-check"></i> Seus palpites aqui (${meus.length})</strong>
-            <ul>${meus.map(m => `<li><b>${m.gols_time_a} x ${m.gols_time_b}</b> · ${fmtJC(m.valor)} JC${m.odd_placar ? ` · placar exato paga ${fmtJC(Math.floor(m.valor * m.odd_placar))} JC` : ''}</li>`).join('')}</ul>
+            <ul>${meus.map(m => `<li><b>${m.gols_time_a} x ${m.gols_time_b}</b> · ${fmtJC(m.valor)} JC${m.odd_placar ? ` · placar exato paga ${fmtJC(multiplicar(m.valor, m.odd_placar))} JC` : ''}</li>`).join('')}</ul>
         </div>` : '';
         const corpo = listaMeus + (!temOdds(b) ? '' : `
             <form class="palpite" data-key="${esc(b.issue_key)}" novalidate>
@@ -813,8 +857,8 @@
 
         const oddR = b[`odd_${r}`];
         caixa.innerHTML = `
-            <span>Acertando o placar ${ga} x ${gb}: <strong>${fmtJC(Math.floor(valor * b.odd_placar))} JC</strong> (×${fmtOdd(b.odd_placar)})</span>
-            <span>Acertando só o resultado (${esc(nomeResultado(b, r))}): <strong>${fmtJC(Math.floor(valor * oddR))} JC</strong> (×${fmtOdd(oddR)})</span>`;
+            <span>Acertando o placar ${ga} x ${gb}: <strong>${fmtJC(multiplicar(valor, b.odd_placar))} JC</strong> (×${fmtOdd(b.odd_placar)})</span>
+            <span>Acertando só o resultado (${esc(nomeResultado(b, r))}): <strong>${fmtJC(multiplicar(valor, oddR))} JC</strong> (×${fmtOdd(oddR)})</span>`;
         caixa.hidden = false;
     }
 
@@ -927,21 +971,30 @@
     const abaBoloes = document.getElementById('aba-boloes');
     const abaMeus = document.getElementById('aba-meus');
 
+    const ABAS = {
+        boloes: { botao: 'aba-boloes', painel: 'lista', titulo: 'Bolões abertos',
+                  sub: 'Escolha o placar e quantas <strong>Jussana Coins</strong> quer arriscar. Pode palpitar mais de uma vez até o fechamento.' },
+        meus: { botao: 'aba-meus', painel: 'meus', titulo: 'Meus palpites',
+                sub: 'Todos os palpites que você fez, com as ODDs travadas na hora da aposta.' },
+        resultados: { botao: 'aba-resultados', painel: 'resultados', titulo: 'Resultados',
+                      sub: 'Lance o placar dos jogos que já fecharam. O prêmio de cada palpite vai direto para o saldo.' },
+    };
+
     function mostrarAba(qual) {
-        const meus = qual === 'meus';
-        abaBoloes.setAttribute('aria-selected', !meus);
-        abaMeus.setAttribute('aria-selected', meus);
-        document.getElementById('lista').hidden = meus;
-        document.getElementById('meus').hidden = !meus;
-        document.getElementById('titulo-aba').textContent = meus ? 'Meus palpites' : 'Bolões abertos';
-        document.getElementById('sub-aba').innerHTML = meus
-            ? 'Todos os palpites que você fez, com as ODDs travadas na hora da aposta.'
-            : 'Escolha o placar e quantas <strong>Jussana Coins</strong> quer arriscar. Pode palpitar mais de uma vez até o fechamento.';
-        if (meus && !meusCarregados) carregarMeus();
-        try { history.replaceState(null, '', meus ? '#meus' : '#'); } catch (e) { /* ignora */ }
+        if (qual === 'resultados' && !isAdmin) qual = 'boloes';
+        for (const [chave, a] of Object.entries(ABAS)) {
+            document.getElementById(a.botao).setAttribute('aria-selected', chave === qual);
+            document.getElementById(a.painel).hidden = chave !== qual;
+        }
+        document.getElementById('titulo-aba').textContent = ABAS[qual].titulo;
+        document.getElementById('sub-aba').innerHTML = ABAS[qual].sub;
+        if (qual === 'meus' && !meusCarregados) carregarMeus();
+        if (qual === 'resultados') carregarResultados();
+        try { history.replaceState(null, '', qual === 'boloes' ? '#' : `#${qual}`); } catch (e) { /* ignora */ }
     }
     abaBoloes.addEventListener('click', () => mostrarAba('boloes'));
     abaMeus.addEventListener('click', () => mostrarAba('meus'));
+    document.getElementById('aba-resultados').addEventListener('click', () => mostrarAba('resultados'));
 
     function atualizarContador(soma = 0) {
         if (totalMeus === null) return;
@@ -959,19 +1012,30 @@
         const r = resultadoDo(p.gols_time_a, p.gols_time_b);
         const quando = dataUTC(p.criado_em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
         const ganhos = p.odd_placar && p.odd_resultado ? `
-            <span class="ganho">Placar exato: <b>${fmtJC(Math.floor(p.valor * p.odd_placar))} JC</b> (×${fmtOdd(p.odd_placar)})</span>
-            <span class="ganho">Só o resultado (${esc(nomeResultado(p, r))}): <b>${fmtJC(Math.floor(p.valor * p.odd_resultado))} JC</b> (×${fmtOdd(p.odd_resultado)})</span>` : '';
-        return `<article class="palpite-item">
+            <span class="ganho">Placar exato: <b>${fmtJC(multiplicar(p.valor, p.odd_placar))} JC</b> (×${fmtOdd(p.odd_placar)})</span>
+            <span class="ganho">Só o resultado (${esc(nomeResultado(p, r))}): <b>${fmtJC(multiplicar(p.valor, p.odd_resultado))} JC</b> (×${fmtOdd(p.odd_resultado)})</span>` : '';
+        const SELO = {
+            placar: ['ganhou', `Ganhou ${fmtJC(p.premio)} JC`],
+            resultado: ['ganhou', `Ganhou ${fmtJC(p.premio)} JC`],
+            perdeu: ['perdeu', 'Perdeu'],
+            devolvido: ['devolvido', `Devolvido ${fmtJC(p.premio)} JC`],
+        };
+        const [classe, texto] = p.situacao ? SELO[p.situacao] : p.aberto ? ['aberto', 'Aberto'] : ['fechado', 'Aguardando resultado'];
+        const motivo = { placar: 'acertou o placar exato! 🎯', resultado: 'acertou o resultado', perdeu: 'não acertou', devolvido: 'aposta devolvida' }[p.situacao] || '';
+        const final = p.gols_final_a != null
+            ? `<span class="final">Resultado: <b>${p.gols_final_a} x ${p.gols_final_b}</b> · ${motivo}</span>` : '';
+        const classeItem = classe === 'ganhou' || classe === 'perdeu' ? classe : '';
+        return `<article class="palpite-item ${classeItem}">
             <div class="pi-jogo">
                 ${miniEscudo(p.escudo_a)}
                 <span class="placar-palpite">${esc(p.time_a)}<em>${p.gols_time_a} x ${p.gols_time_b}</em>${esc(p.time_b)}</span>
                 ${miniEscudo(p.escudo_b)}
             </div>
-            <span class="selo-status ${p.aberto ? 'aberto' : 'fechado'}">${p.aberto ? 'Aberto' : 'Aguardando resultado'}</span>
+            <span class="selo-status ${classe}">${texto}</span>
             <div class="pi-info">
                 <span><span class="tag">${esc(p.issue_key)}</span></span>
                 <span>Apostou <b>${fmtJC(p.valor)} JC</b> em ${quando}</span>
-                ${ganhos}
+                ${final || ganhos}
             </div>
         </article>`;
     }
@@ -985,8 +1049,11 @@
             totalMeus = dados.length;
             atualizarContador();
             const apostado = dados.reduce((s, p) => s + p.valor, 0);
+            const ganho = dados.reduce((s, p) => s + (p.premio || 0), 0);
+            const acertos = dados.filter(p => p.situacao === 'placar' || p.situacao === 'resultado').length;
             document.getElementById('resumo-meus').innerHTML = dados.length
                 ? `<strong>${dados.length}</strong> palpite${dados.length === 1 ? '' : 's'} · <strong>${fmtJC(apostado)}</strong> JC apostadas`
+                  + (ganho ? ` · <strong style="color:var(--success)">${fmtJC(ganho)}</strong> JC recebidas em ${acertos} acerto${acertos === 1 ? '' : 's'}` : '')
                 : '';
             alvo.innerHTML = dados.length
                 ? dados.map(htmlMeuPalpite).join('')
@@ -995,6 +1062,87 @@
             if (err.message !== 'sessão expirada') alvo.innerHTML = '<p class="vazio">Não foi possível carregar seus palpites.</p>';
         }
     }
+
+    // --- Aba Resultados (admin) ---
+    function htmlResultado(b) {
+        const k = esc(b.issue_key);
+        const fecha = dataUTC(b.data_encerramento).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+        const lado = (nome, escudo, direita) => direita
+            ? `<span class="res-time direita">${esc(nome)}${miniEscudo(escudo)}</span>`
+            : `<span class="res-time">${miniEscudo(escudo)}${esc(nome)}</span>`;
+        const pendente = b.gols_final_a == null;
+        const meio = pendente
+            ? `<span class="res-placar">
+                   <input type="number" name="ga" min="0" max="99" inputmode="numeric" placeholder="0" aria-label="Gols ${esc(b.time_a)}">
+                   <span>x</span>
+                   <input type="number" name="gb" min="0" max="99" inputmode="numeric" placeholder="0" aria-label="Gols ${esc(b.time_b)}">
+               </span>`
+            : `<span class="res-final">${b.gols_final_a} x ${b.gols_final_b}</span>`;
+        const info = pendente
+            ? `<span><span class="tag">${k}</span></span><span>Fechou ${fecha}</span>
+               <span><b>${b.total_apostas}</b> palpite${b.total_apostas === 1 ? '' : 's'} · <b>${fmtJC(b.total_apostado)}</b> JC apostadas</span>`
+            : `<span><span class="tag">${k}</span></span>
+               <span><b>${b.vencedores}</b> de ${b.total_apostas} palpite${b.total_apostas === 1 ? '' : 's'} premiado${b.vencedores === 1 ? '' : 's'}</span>
+               <span class="pago">Pagou <b>${fmtJC(b.total_pago)} JC</b> · entrou ${fmtJC(b.total_apostado)} JC</span>`;
+        const tag = pendente ? 'form' : 'article';
+        return `<${tag} class="res-item ${pendente ? 'pendente' : ''}" data-key="${k}" ${pendente ? 'novalidate' : ''}>
+            <div class="res-confronto">${lado(b.time_a, b.escudo_a)}${meio}${lado(b.time_b, b.escudo_b, true)}</div>
+            <div class="res-info">${info}</div>
+            ${pendente ? `<button type="submit" class="btn"><i class="fas fa-flag-checkered"></i> Encerrar e pagar</button>
+                          <p class="status" role="status"></p>` : ''}
+        </${tag}>`;
+    }
+
+    let painelResultados = { pendentes: [], encerrados: [] };
+
+    async function carregarResultados() {
+        const alvo = document.getElementById('lista-resultados');
+        try {
+            const { ok, dados } = await api('/admin/resultados');
+            if (!ok) throw new Error('falha');
+            painelResultados = dados;
+            const c = document.getElementById('contador-resultados');
+            c.textContent = dados.pendentes.length;
+            c.hidden = !dados.pendentes.length;
+            alvo.innerHTML = `
+                <h2 class="res-titulo"><i class="fas fa-hourglass-half"></i> Aguardando resultado (${dados.pendentes.length})</h2>
+                ${dados.pendentes.length ? dados.pendentes.map(htmlResultado).join('')
+                    : '<div class="vazio">Nenhum jogo esperando resultado. Os bolões aparecem aqui depois do horário de fechamento.</div>'}
+                ${dados.encerrados.length ? `<h2 class="res-titulo"><i class="fas fa-check"></i> Encerrados</h2>${dados.encerrados.map(htmlResultado).join('')}` : ''}`;
+        } catch (err) {
+            if (err.message !== 'sessão expirada') alvo.innerHTML = '<p class="vazio">Não foi possível carregar os resultados.</p>';
+        }
+    }
+
+    document.getElementById('lista-resultados').addEventListener('submit', async e => {
+        e.preventDefault();
+        const form = e.target;
+        const status = form.querySelector('.status');
+        const setStatus = (t, tipo = '') => { status.textContent = t; status.className = 'status ' + tipo; };
+        const ga = form.ga.value, gb = form.gb.value;
+        if (ga === '' || gb === '') return setStatus('Preencha o placar dos dois times.', 'error');
+
+        const b = painelResultados.pendentes.find(x => x.issue_key === form.dataset.key);
+        const confirmar = `Confirmar o resultado ${b.time_a} ${+ga} x ${+gb} ${b.time_b}?\n\n`
+            + `Os ${b.total_apostas} palpite(s) serão pagos agora. Isso não pode ser desfeito.`;
+        if (!confirm(confirmar)) return;
+
+        const botao = form.querySelector('button[type="submit"]');
+        botao.disabled = true;
+        setStatus('Calculando e pagando...');
+        try {
+            const { ok, dados } = await api(`/tickets/${encodeURIComponent(form.dataset.key)}/resultado`, {
+                method: 'POST', body: JSON.stringify({ gols_time_a: +ga, gols_time_b: +gb }),
+            });
+            if (!ok) { setStatus(typeof dados.detail === 'string' ? dados.detail : 'Não foi possível encerrar.', 'error'); botao.disabled = false; return; }
+            await carregarResultados();
+            meusCarregados = false;  // os palpites do próprio admin podem ter sido pagos
+            const eu = await api('/auth/me');
+            if (eu.ok) atualizarSaldo(eu.dados.saldo);
+        } catch (err) {
+            if (err.message !== 'sessão expirada') { setStatus('Erro de conexão com o servidor.', 'error'); botao.disabled = false; }
+        }
+    });
 
     async function carregarBoloes() {
         const { ok, dados } = await api('/tickets/abertos');
@@ -1010,9 +1158,13 @@
             document.getElementById('nome-usuario').textContent = usuario.username;
             document.getElementById('link-admin').hidden = !isAdmin;
             document.getElementById('link-contas').hidden = !isAdmin;
+            document.getElementById('aba-resultados').hidden = !isAdmin;
             atualizarSaldo(usuario.saldo);
             await carregarBoloes();
-            if (location.hash === '#meus') mostrarAba('meus'); else carregarMeus();
+            const abaLink = location.hash.slice(1);
+            if (abaLink === 'meus' || abaLink === 'resultados') mostrarAba(abaLink);
+            if (abaLink !== 'meus') carregarMeus();
+            if (isAdmin && abaLink !== 'resultados') carregarResultados();  // só para o contador da aba
         } catch (err) {
             if (err.message === 'sessão expirada') return;
             lista.innerHTML = '<p class="vazio" style="grid-column: 1 / -1">Não foi possível conectar ao servidor. O servidor está rodando?</p>';

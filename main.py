@@ -1,9 +1,10 @@
+import math
 from datetime import datetime
 from typing import List
 
 from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import func, inspect, text
+from sqlalchemy import case, func, inspect, text
 from sqlalchemy.orm import Session
 
 import models, schemas
@@ -34,6 +35,13 @@ def migrar_banco():
         for coluna in ("odd_resultado", "odd_placar"):
             if coluna not in colunas:
                 conn.execute(text(f"ALTER TABLE apostas ADD COLUMN {coluna} FLOAT"))
+        # Resultado do jogo e prêmio de cada palpite
+        for coluna, tipo in (("gols_final_a", "INTEGER"), ("gols_final_b", "INTEGER"), ("encerrado_em", "TIMESTAMP")):
+            if coluna not in colunas_bolao:
+                conn.execute(text(f"ALTER TABLE bolao_issues ADD COLUMN {coluna} {tipo}"))
+        for coluna, tipo in (("premio", "INTEGER"), ("situacao", "VARCHAR")):
+            if coluna not in colunas:
+                conn.execute(text(f"ALTER TABLE apostas ADD COLUMN {coluna} {tipo}"))
         if "valor" not in colunas:
             conn.execute(text("ALTER TABLE apostas ADD COLUMN valor INTEGER DEFAULT 0"))
         if "usuario_id" not in colunas:
@@ -278,14 +286,137 @@ def meus_palpites(db: Session = Depends(get_db), usuario: models.Usuario = Depen
         "escudo_a": b.escudo_a,
         "escudo_b": b.escudo_b,
         "data_encerramento": b.data_encerramento,
-        "aberto": b.data_encerramento > agora,
+        "aberto": b.data_encerramento > agora and b.encerrado_em is None,
         "gols_time_a": a.gols_time_a,
         "gols_time_b": a.gols_time_b,
         "valor": a.valor or 0,
         "odd_resultado": a.odd_resultado,
         "odd_placar": a.odd_placar,
         "criado_em": a.criado_em,
+        "gols_final_a": b.gols_final_a,
+        "gols_final_b": b.gols_final_b,
+        "premio": a.premio,
+        "situacao": a.situacao,
     } for a, b in linhas]
+
+
+# --- Resultado do jogo e pagamento (só admin) ---
+def multiplicar(valor: int, odd: float) -> int:
+    """valor × ODD arredondado para baixo, sem o erro de casas decimais (100 × 2.3 = 230, não 229)."""
+    return int(math.floor(round(valor * odd, 6)))
+
+
+def _sinal(gols_a: int, gols_b: int) -> int:
+    """1 = vitória do mandante, 0 = empate, -1 = vitória do visitante."""
+    return (gols_a > gols_b) - (gols_a < gols_b)
+
+
+def calcular_premio(aposta: models.Aposta, gols_a: int, gols_b: int) -> tuple[int, str]:
+    """Quanto o palpite recebe, usando as ODDs travadas na hora da aposta."""
+    valor = aposta.valor or 0
+    if aposta.odd_placar is None or aposta.odd_resultado is None:
+        # Palpite antigo, de antes das ODDs: devolve o que foi apostado
+        return valor, "devolvido"
+    if aposta.gols_time_a == gols_a and aposta.gols_time_b == gols_b:
+        return multiplicar(valor, aposta.odd_placar), "placar"
+    if _sinal(aposta.gols_time_a, aposta.gols_time_b) == _sinal(gols_a, gols_b):
+        return multiplicar(valor, aposta.odd_resultado), "resultado"
+    return 0, "perdeu"
+
+
+def _bolao_admin(db: Session, b: models.BolaoIssue) -> dict:
+    total, apostado, pago, vencedores = (
+        db.query(
+            func.count(models.Aposta.id),
+            func.coalesce(func.sum(models.Aposta.valor), 0),
+            func.coalesce(func.sum(models.Aposta.premio), 0),
+            func.coalesce(func.sum(case((models.Aposta.situacao.in_(("placar", "resultado")), 1), else_=0)), 0),
+        )
+        .filter(models.Aposta.bolao_id == b.id)
+        .one()
+    )
+    return {
+        "issue_key": b.issue_key, "time_a": b.time_a, "time_b": b.time_b,
+        "escudo_a": b.escudo_a, "escudo_b": b.escudo_b,
+        "data_encerramento": b.data_encerramento,
+        "gols_final_a": b.gols_final_a, "gols_final_b": b.gols_final_b, "encerrado_em": b.encerrado_em,
+        "total_apostas": total, "total_apostado": apostado, "total_pago": pago, "vencedores": vencedores,
+    }
+
+
+@app.get("/api/v1/admin/resultados", response_model=schemas.PainelResultados)
+def painel_resultados(db: Session = Depends(get_db), admin: models.Usuario = Depends(admin_atual)):
+    """Bolões que já fecharam e esperam o placar, e os últimos já pagos."""
+    agora = datetime.utcnow()
+    pendentes = (
+        db.query(models.BolaoIssue)
+        .filter(models.BolaoIssue.encerrado_em.is_(None), models.BolaoIssue.data_encerramento <= agora)
+        .order_by(models.BolaoIssue.data_encerramento)
+        .all()
+    )
+    encerrados = (
+        db.query(models.BolaoIssue)
+        .filter(models.BolaoIssue.encerrado_em.isnot(None))
+        .order_by(models.BolaoIssue.encerrado_em.desc())
+        .limit(20)
+        .all()
+    )
+    return {
+        "pendentes": [_bolao_admin(db, b) for b in pendentes],
+        "encerrados": [_bolao_admin(db, b) for b in encerrados],
+    }
+
+
+@app.post("/api/v1/tickets/{issue_key}/resultado", response_model=schemas.BolaoAdmin)
+def lancar_resultado(
+    issue_key: str,
+    resultado: schemas.ResultadoJogo,
+    db: Session = Depends(get_db),
+    admin: models.Usuario = Depends(admin_atual),
+):
+    """Admin informa o placar real: cada palpite é calculado e o prêmio vai para o saldo."""
+    bolao = db.query(models.BolaoIssue).filter(models.BolaoIssue.issue_key == issue_key.upper()).first()
+    if not bolao:
+        raise HTTPException(status_code=404, detail="Card de bolão não encontrado.")
+    if bolao.encerrado_em is not None:
+        raise HTTPException(status_code=409, detail="Este bolão já foi encerrado e pago.")
+    if bolao.data_encerramento > datetime.utcnow():
+        raise HTTPException(status_code=400, detail="Este bolão ainda está aceitando palpites. Espere o horário de fechamento.")
+
+    ga, gb = resultado.gols_time_a, resultado.gols_time_b
+    try:
+        # Tudo numa transação só: ou paga todo mundo, ou ninguém.
+        # Primeiro "trava" o bolão: se dois cliques chegarem juntos, só um passa daqui.
+        travou = db.execute(
+            text("UPDATE bolao_issues SET encerrado_em = :agora WHERE id = :id AND encerrado_em IS NULL"),
+            {"agora": datetime.utcnow(), "id": bolao.id},
+        ).rowcount
+        if not travou:
+            db.rollback()
+            raise HTTPException(status_code=409, detail="Este bolão já foi encerrado e pago.")
+
+        apostas = db.query(models.Aposta).filter(models.Aposta.bolao_id == bolao.id).all()
+        for aposta in apostas:
+            premio, situacao = calcular_premio(aposta, ga, gb)
+            aposta.premio = premio
+            aposta.situacao = situacao
+            if premio > 0 and aposta.usuario_id is not None:
+                db.execute(
+                    text("UPDATE usuarios SET saldo = saldo + :premio WHERE id = :id"),
+                    {"premio": premio, "id": aposta.usuario_id},
+                )
+        bolao.gols_final_a = ga
+        bolao.gols_final_b = gb
+        bolao.status = "DONE"
+        db.commit()
+    except HTTPException:
+        raise
+    except Exception:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Erro ao lançar o resultado. Nada foi pago; tente de novo.")
+
+    db.refresh(bolao)
+    return _bolao_admin(db, bolao)
 
 
 @app.get("/api/v1/times/busca", response_model=List[schemas.TimeEncontrado])
@@ -303,6 +434,7 @@ def listar_boloes_abertos(
     boloes = (
         db.query(models.BolaoIssue)
         .filter(models.BolaoIssue.data_encerramento > datetime.utcnow())
+        .filter(models.BolaoIssue.encerrado_em.is_(None))
         .order_by(models.BolaoIssue.data_encerramento)
         .all()
     )
@@ -358,7 +490,7 @@ def registrar_aposta(
         raise HTTPException(status_code=404, detail="Card de bolão não encontrado no Kanvira.")
 
     # 2. Regra de Negócio: Bloqueia apostas após o horário do jogo
-    if bolao.data_encerramento <= datetime.utcnow():
+    if bolao.encerrado_em is not None or bolao.data_encerramento <= datetime.utcnow():
         raise HTTPException(status_code=400, detail="Este bolão já está encerrado para novos palpites.")
 
     # 2b. Sem ODD definida não dá para saber quanto pagar

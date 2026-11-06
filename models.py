@@ -17,6 +17,10 @@ class BolaoIssue(Base):
     odd_empate = Column(Float, nullable=True)
     odd_fora = Column(Float, nullable=True)     # vitória do visitante (time B)
     odd_placar = Column(Float, nullable=True)   # placar exato
+    # Resultado real, informado pelo admin depois do jogo
+    gols_final_a = Column(Integer, nullable=True)
+    gols_final_b = Column(Integer, nullable=True)
+    encerrado_em = Column(DateTime, nullable=True)  # quando o admin lançou o resultado e pagou
     data_encerramento = Column(DateTime)  # Sempre em UTC
     status = Column(String, default="TO DO")
     criado_em = Column(DateTime, default=datetime.datetime.utcnow)
@@ -36,6 +40,9 @@ class Aposta(Base):
     # ODDs "travadas" no momento da aposta (editar o bolão depois não muda isso)
     odd_resultado = Column(Float, nullable=True)  # ODD do resultado palpitado (casa/empate/fora)
     odd_placar = Column(Float, nullable=True)     # ODD de placar exato
+    # Preenchidos quando o admin lança o resultado do jogo
+    premio = Column(Integer, nullable=True)       # JC recebidas (0 = perdeu; vazio = jogo sem resultado ainda)
+    situacao = Column(String, nullable=True)      # "placar", "resultado", "perdeu" ou "devolvido"
     criado_em = Column(DateTime, default=datetime.datetime.utcnow)
 
     # Chave Estrangeira ligando a aposta ao Bolão correto

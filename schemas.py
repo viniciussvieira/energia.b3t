@@ -127,6 +127,11 @@ class MeuPalpite(BaseModel):
     odd_resultado: Optional[float] = None
     odd_placar: Optional[float] = None
     criado_em: datetime
+    # Depois do resultado
+    gols_final_a: Optional[int] = None
+    gols_final_b: Optional[int] = None
+    premio: Optional[int] = None
+    situacao: Optional[str] = None
 
 class BolaoAberto(BaseModel):
     """Card de bolão como aparece na tela de palpites."""
@@ -173,6 +178,34 @@ class UsuarioResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+# --- Resultado dos jogos (admin) ---
+class ResultadoJogo(BaseModel):
+    gols_time_a: int = Field(..., ge=0, le=99)
+    gols_time_b: int = Field(..., ge=0, le=99)
+
+
+class BolaoAdmin(BaseModel):
+    """Bolão na aba 'Resultados' do admin."""
+    issue_key: str
+    time_a: str
+    time_b: str
+    escudo_a: Optional[str] = None
+    escudo_b: Optional[str] = None
+    data_encerramento: datetime
+    gols_final_a: Optional[int] = None
+    gols_final_b: Optional[int] = None
+    encerrado_em: Optional[datetime] = None
+    total_apostas: int
+    total_apostado: int
+    total_pago: int
+    vencedores: int
+
+
+class PainelResultados(BaseModel):
+    pendentes: List[BolaoAdmin]   # já fecharam para palpites, falta lançar o placar
+    encerrados: List[BolaoAdmin]  # já pagos (os mais recentes)
 
 
 # --- Gestão de contas (admin) ---
