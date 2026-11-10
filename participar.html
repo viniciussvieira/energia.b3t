@@ -519,6 +519,14 @@
         .res-info b { color: var(--text-main); }
         .res-info .pago b { color: var(--success); }
         .res-item .btn { align-self: stretch; }
+        .sugestao {
+            display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+            border-radius: 8px; padding: 8px 12px; font-size: 0.86em;
+            background: rgba(88, 166, 255, 0.08); border: 1px solid rgba(88, 166, 255, 0.3); color: var(--text-muted);
+        }
+        .sugestao b { color: var(--text-main); }
+        .sugestao.final { background: rgba(63, 185, 80, 0.08); border-color: rgba(63, 185, 80, 0.35); }
+        .sugestao.final b { color: var(--success); }
 
         .selo-status.fechado { background: rgba(210, 153, 34, 0.1); color: #D29922; border: 1px solid rgba(210, 153, 34, 0.35); }
 
@@ -1071,11 +1079,24 @@
             ? `<span class="res-time direita">${esc(nome)}${miniEscudo(escudo)}</span>`
             : `<span class="res-time">${miniEscudo(escudo)}${esc(nome)}</span>`;
         const pendente = b.gols_final_a == null;
+        // Placar da ESPN (só jogos importados): jogo terminado já vem preenchido para conferir
+        const temPlacar = b.placar_espn_a != null && b.placar_espn_b != null;
+        const terminou = b.espn_estado === 'post' && temPlacar;
+        let sugestao = '';
+        if (pendente && b.espn_estado) {
+            const sit = b.espn_situacao ? ` (${esc(b.espn_situacao)})` : '';
+            sugestao = terminou
+                ? `<div class="sugestao final"><i class="fas fa-circle-check"></i> Placar da ESPN: <b>${b.placar_espn_a} x ${b.placar_espn_b}</b>${sit}. Já preenchido: confira antes de pagar.</div>`
+                : b.espn_estado === 'in' && temPlacar
+                    ? `<div class="sugestao"><i class="fas fa-satellite-dish"></i> Jogo em andamento na ESPN: <b>${b.placar_espn_a} x ${b.placar_espn_b}</b>${sit}. Espere terminar para lançar.</div>`
+                    : `<div class="sugestao"><i class="far fa-clock"></i> O jogo ainda não começou na ESPN.</div>`;
+        }
+        const valor = lado => terminou ? `value="${lado === 'a' ? b.placar_espn_a : b.placar_espn_b}"` : '';
         const meio = pendente
             ? `<span class="res-placar">
-                   <input type="number" name="ga" min="0" max="99" inputmode="numeric" placeholder="0" aria-label="Gols ${esc(b.time_a)}">
+                   <input type="number" name="ga" min="0" max="99" inputmode="numeric" placeholder="0" ${valor('a')} aria-label="Gols ${esc(b.time_a)}">
                    <span>x</span>
-                   <input type="number" name="gb" min="0" max="99" inputmode="numeric" placeholder="0" aria-label="Gols ${esc(b.time_b)}">
+                   <input type="number" name="gb" min="0" max="99" inputmode="numeric" placeholder="0" ${valor('b')} aria-label="Gols ${esc(b.time_b)}">
                </span>`
             : `<span class="res-final">${b.gols_final_a} x ${b.gols_final_b}</span>`;
         const info = pendente
@@ -1088,6 +1109,7 @@
         return `<${tag} class="res-item ${pendente ? 'pendente' : ''}" data-key="${k}" ${pendente ? 'novalidate' : ''}>
             <div class="res-confronto">${lado(b.time_a, b.escudo_a)}${meio}${lado(b.time_b, b.escudo_b, true)}</div>
             <div class="res-info">${info}</div>
+            ${sugestao}
             ${pendente ? `<button type="submit" class="btn"><i class="fas fa-flag-checkered"></i> Encerrar e pagar</button>
                           <p class="status" role="status"></p>` : ''}
         </${tag}>`;
@@ -1123,7 +1145,11 @@
         if (ga === '' || gb === '') return setStatus('Preencha o placar dos dois times.', 'error');
 
         const b = painelResultados.pendentes.find(x => x.issue_key === form.dataset.key);
-        const confirmar = `Confirmar o resultado ${b.time_a} ${+ga} x ${+gb} ${b.time_b}?\n\n`
+        let alerta = '';
+        if (b.espn_estado === 'in') alerta = 'ATENÇÃO: pela ESPN o jogo ainda está em andamento!\n\n';
+        else if (b.espn_estado === 'post' && b.placar_espn_a != null && (+ga !== b.placar_espn_a || +gb !== b.placar_espn_b))
+            alerta = `ATENÇÃO: a ESPN diz ${b.placar_espn_a} x ${b.placar_espn_b}, diferente do que você digitou.\n\n`;
+        const confirmar = alerta + `Confirmar o resultado ${b.time_a} ${+ga} x ${+gb} ${b.time_b}?\n\n`
             + `Os ${b.total_apostas} palpite(s) serão pagos agora. Isso não pode ser desfeito.`;
         if (!confirm(confirmar)) return;
 

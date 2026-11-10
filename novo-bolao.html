@@ -388,6 +388,44 @@
         .form-group input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.2); }
         .hint { color: var(--text-muted); font-size: 0.8em; }
 
+        /* --- Buscar jogos (ESPN) --- */
+        .importar { max-width: 480px; margin: 0 auto 22px; padding: 20px 22px; gap: 14px; }
+        .importar h2 { font-size: 1.05em; display: flex; align-items: center; gap: 8px; }
+        .importar h2 i { color: var(--accent); }
+        .importar .linha { display: flex; gap: 8px; flex-wrap: wrap; }
+        .importar select {
+            flex: 1; min-width: 140px;
+            background: var(--bg-primary); border: 1px solid var(--border); border-radius: 8px;
+            padding: 10px 12px; color: var(--text-main); font-size: 0.95em; font-family: inherit; color-scheme: dark;
+        }
+        .importar select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.2); }
+        .importar .btn { width: auto; padding: 10px 16px; }
+        .lista-jogos { list-style: none; display: flex; flex-direction: column; gap: 6px; max-height: 380px; overflow-y: auto; }
+        .lista-jogos li {
+            display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; align-items: center;
+            background: var(--bg-primary); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px;
+        }
+        .lista-jogos .jogo-times { display: flex; align-items: center; gap: 8px; font-weight: 600; min-width: 0; flex-wrap: wrap; }
+        .lista-jogos .jogo-times img, .lista-jogos .jogo-times .mini-vazio { width: 24px; height: 24px; object-fit: contain; flex-shrink: 0; }
+        .lista-jogos .jogo-times .mini-vazio { display: inline-flex; align-items: center; justify-content: center; color: var(--border); }
+        .lista-jogos .jogo-quando { grid-column: 1; color: var(--text-muted); font-size: 0.82em; }
+        .lista-jogos .usar {
+            grid-row: 1 / span 2; grid-column: 2;
+            background: transparent; border: 1px solid var(--accent); color: var(--accent);
+            border-radius: 8px; padding: 6px 12px; font-weight: 600; cursor: pointer; font-size: 0.85em;
+        }
+        .lista-jogos .usar:hover { background: rgba(88, 166, 255, 0.12); }
+        .lista-jogos .ja { grid-row: 1 / span 2; grid-column: 2; color: var(--text-muted); font-size: 0.8em; text-align: right; }
+        .lista-jogos li.info { display: block; color: var(--text-muted); font-size: 0.9em; text-align: center; }
+        .importado {
+            display: flex; align-items: center; gap: 8px; justify-content: space-between;
+            background: rgba(88, 166, 255, 0.08); border: 1px solid rgba(88, 166, 255, 0.35);
+            border-radius: 8px; padding: 8px 12px; font-size: 0.85em; color: var(--text-muted);
+        }
+        .importado b { color: var(--text-main); }
+        .importado button { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 0.95em; }
+        .importado button:hover { color: var(--error); }
+
         /* --- ODDs --- */
         .odds-grid {
             display: grid;
@@ -434,7 +472,26 @@
             <p>Cadastre o jogo e defina até quando a galera pode palpitar.</p>
         </div>
 
+        <section class="form-card importar" id="importar" hidden>
+            <h2><i class="fas fa-magnifying-glass"></i> Buscar jogos</h2>
+            <p class="hint" style="margin-top:-8px">Escolha o campeonato e importe um jogo: times, escudos e horário são preenchidos sozinhos. Você só define as ODDs.</p>
+            <div class="linha">
+                <select id="sel-liga" aria-label="Campeonato"><option value="">Carregando campeonatos...</option></select>
+                <select id="sel-dias" aria-label="Período">
+                    <option value="7">Próximos 7 dias</option>
+                    <option value="14" selected>Próximos 14 dias</option>
+                    <option value="30">Próximos 30 dias</option>
+                </select>
+                <button type="button" class="btn" id="btn-buscar-jogos"><i class="fas fa-magnifying-glass"></i> Buscar</button>
+            </div>
+            <ul class="lista-jogos" id="lista-jogos" hidden></ul>
+        </section>
+
         <form class="form-card" id="formBolao" novalidate hidden>
+            <div class="importado" id="importado" hidden>
+                <span><i class="fas fa-link"></i> Jogo importado: <b id="importado-nome"></b></span>
+                <button type="button" id="desfazer-import" title="Desvincular do jogo da ESPN" aria-label="Desvincular do jogo da ESPN">✕</button>
+            </div>
             <div class="form-group">
                 <label for="time_a">Time mandante</label>
                 <div class="slot-time" data-lado="a" data-placeholder="Digite para buscar, ex: Flamengo"></div>
@@ -548,6 +605,8 @@
                     escudo_a: campos.a.escudo, escudo_b: campos.b.escudo,
                     ...odds,
                     data_encerramento: data.toISOString(),
+                    espn_id: jogoImportado ? jogoImportado.espn_id : null,
+                    espn_liga: jogoImportado ? jogoImportado.liga : null,
                 }),
             });
             if (ok) {
@@ -556,6 +615,9 @@
                 campos.a.limpar();
                 campos.b.limpar();
                 atualizarRotulosOdds();
+                const eraImportado = !!jogoImportado;
+                desvincular();
+                if (eraImportado) buscarJogos();  // marca o jogo como "já tem bolão" na lista
             } else {
                 setStatus(typeof dados.detail === 'string' ? dados.detail : 'Verifique os campos.', 'error');
             }
@@ -581,12 +643,93 @@
         document.getElementById('lbl-odd-fora').textContent = b ? `Vitória ${b}` : 'Vitória do visitante';
     }
 
+    // --- Buscar jogos (ESPN) ---
+    let jogoImportado = null;
+    let jogosEncontrados = [];
+    const listaJogos = document.getElementById('lista-jogos');
+    const escTexto = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const dataUTC = s => new Date(/[zZ]|[+-]\d\d:\d\d$/.test(s) ? s : s + 'Z');
+    const mini = url => url ? `<img src="${escTexto(url)}" alt="" loading="lazy">` : '<span class="mini-vazio"><i class="fas fa-shield-halved"></i></span>';
+    // Date -> "AAAA-MM-DDTHH:MM" no horário local (formato do campo datetime-local)
+    const paraCampoData = d => {
+        const p = n => String(n).padStart(2, '0');
+        return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+    };
+
+    async function carregarLigas() {
+        const sel = document.getElementById('sel-liga');
+        try {
+            const { ok, dados } = await api('/admin/ligas');
+            if (!ok) throw new Error();
+            sel.innerHTML = dados.map(l => `<option value="${escTexto(l.id)}">${escTexto(l.nome)}</option>`).join('');
+        } catch (err) {
+            sel.innerHTML = '<option value="">Não foi possível carregar</option>';
+        }
+    }
+
+    async function buscarJogos() {
+        const liga = document.getElementById('sel-liga').value;
+        const dias = document.getElementById('sel-dias').value;
+        if (!liga) return;
+        const botao = document.getElementById('btn-buscar-jogos');
+        botao.disabled = true;
+        listaJogos.hidden = false;
+        listaJogos.innerHTML = '<li class="info">Buscando jogos...</li>';
+        try {
+            const { ok, dados } = await api(`/admin/jogos?liga=${encodeURIComponent(liga)}&dias=${dias}`);
+            if (!ok) throw new Error();
+            jogosEncontrados = dados;
+            listaJogos.innerHTML = dados.length ? dados.map((j, i) => {
+                const quando = dataUTC(j.data).toLocaleString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+                return `<li>
+                    <span class="jogo-times">${mini(j.escudo_a)}${escTexto(j.time_a)} <span style="color:var(--text-muted)">x</span> ${escTexto(j.time_b)}${mini(j.escudo_b)}</span>
+                    <span class="jogo-quando">${quando} · ${escTexto(j.liga_nome)}</span>
+                    ${j.ja_importado ? `<span class="ja">Já tem bolão<br><b>${escTexto(j.ja_importado)}</b></span>`
+                                     : `<button type="button" class="usar" data-i="${i}">Usar</button>`}
+                </li>`;
+            }).join('') : '<li class="info">Nenhum jogo encontrado nesse período. Tente outro campeonato ou um período maior.</li>';
+        } catch (err) {
+            if (err.message !== 'sessão expirada') listaJogos.innerHTML = '<li class="info">Não foi possível buscar agora. Você pode criar o bolão na mão abaixo.</li>';
+        }
+        botao.disabled = false;
+    }
+
+    function usarJogo(j) {
+        jogoImportado = j;
+        campos.a.definir(j.time_a, j.escudo_a);
+        campos.b.definir(j.time_b, j.escudo_b);
+        document.getElementById('data_encerramento').value = paraCampoData(dataUTC(j.data));
+        document.getElementById('importado-nome').textContent = `${j.time_a} x ${j.time_b}`;
+        document.getElementById('importado').hidden = false;
+        atualizarRotulosOdds();
+        setStatus('Jogo carregado! Agora preencha as ODDs e clique em Criar bolão.', 'success');
+        const odd = document.getElementById('odd_casa');
+        odd.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        odd.focus({ preventScroll: true });
+    }
+
+    function desvincular() {
+        jogoImportado = null;
+        document.getElementById('importado').hidden = true;
+    }
+
+    document.getElementById('btn-buscar-jogos').addEventListener('click', buscarJogos);
+    document.getElementById('desfazer-import').addEventListener('click', desvincular);
+    listaJogos.addEventListener('click', e => {
+        const b = e.target.closest('.usar');
+        if (b) usarJogo(jogosEncontrados[+b.dataset.i]);
+    });
+
     async function iniciar() {
         try {
             const { ok, dados: usuario } = await api('/auth/me');
             if (!ok) throw new Error();
             document.getElementById('saldo').textContent = Number(usuario.saldo).toLocaleString('pt-BR');
             document.getElementById(usuario.is_admin ? 'formBolao' : 'bloqueado').hidden = false;
+            if (usuario.is_admin) {
+                document.getElementById('importar').hidden = false;
+                carregarLigas();
+            }
         } catch (err) {
             if (err.message === 'sessão expirada') return;
             const b = document.getElementById('bloqueado');

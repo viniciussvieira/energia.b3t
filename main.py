@@ -1,4 +1,5 @@
 import math
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from typing import List
 
@@ -10,7 +11,8 @@ from sqlalchemy.orm import Session
 import models, schemas
 from auth import admin_atual, criar_token, gerar_hash_senha, usuario_atual, verificar_senha
 from database import engine, get_db
-from times import buscar_times, pre_carregar_times
+from jogos import buscar_proximos, placar_do_jogo
+from times import LIGAS, buscar_times, pre_carregar_times
 
 # Cria as tabelas no banco de dados do Kanvira
 models.Base.metadata.create_all(bind=engine)
@@ -39,6 +41,9 @@ def migrar_banco():
         for coluna, tipo in (("gols_final_a", "INTEGER"), ("gols_final_b", "INTEGER"), ("encerrado_em", "TIMESTAMP")):
             if coluna not in colunas_bolao:
                 conn.execute(text(f"ALTER TABLE bolao_issues ADD COLUMN {coluna} {tipo}"))
+        for coluna in ("espn_id", "espn_liga"):
+            if coluna not in colunas_bolao:
+                conn.execute(text(f"ALTER TABLE bolao_issues ADD COLUMN {coluna} VARCHAR"))
         for coluna, tipo in (("premio", "INTEGER"), ("situacao", "VARCHAR")):
             if coluna not in colunas:
                 conn.execute(text(f"ALTER TABLE apostas ADD COLUMN {coluna} {tipo}"))
@@ -212,6 +217,14 @@ def criar_ticket_bolao(
     if not usuario.is_admin:
         raise HTTPException(status_code=403, detail="Só o administrador pode criar cards de bolão.")
 
+    # Jogo importado da ESPN: confere o campeonato e evita criar o mesmo jogo duas vezes
+    if bolao.espn_id:
+        if bolao.espn_liga not in LIGAS:
+            raise HTTPException(status_code=400, detail="Campeonato inválido.")
+        repetido = db.query(models.BolaoIssue).filter(models.BolaoIssue.espn_id == bolao.espn_id).first()
+        if repetido:
+            raise HTTPException(status_code=409, detail=f"Esse jogo já tem bolão: {repetido.issue_key}.")
+
     nova_issue_key = gerar_issue_key(db, prefixo="KAN")
 
     novo_ticket = models.BolaoIssue(
@@ -225,6 +238,8 @@ def criar_ticket_bolao(
         odd_fora=bolao.odd_fora,
         odd_placar=bolao.odd_placar,
         data_encerramento=bolao.data_encerramento,
+        espn_id=bolao.espn_id or None,
+        espn_liga=bolao.espn_liga if bolao.espn_id else None,
         status="TO DO"
     )
 
@@ -361,10 +376,49 @@ def painel_resultados(db: Session = Depends(get_db), admin: models.Usuario = Dep
         .limit(20)
         .all()
     )
+    # Para jogos importados, busca o placar na ESPN (em paralelo) para sugerir o resultado
+    with ThreadPoolExecutor(max_workers=6) as pool:
+        placares = list(pool.map(lambda b: placar_do_jogo(b.espn_liga, b.espn_id, b.data_encerramento), pendentes))
+
+    lista_pendentes = []
+    for b, jogo in zip(pendentes, placares):
+        item = _bolao_admin(db, b)
+        if jogo:
+            item.update(
+                espn_estado=jogo["estado"], espn_situacao=jogo["situacao"],
+                placar_espn_a=jogo["placar_a"], placar_espn_b=jogo["placar_b"],
+            )
+        lista_pendentes.append(item)
+
     return {
-        "pendentes": [_bolao_admin(db, b) for b in pendentes],
+        "pendentes": lista_pendentes,
         "encerrados": [_bolao_admin(db, b) for b in encerrados],
     }
+
+
+@app.get("/api/v1/admin/ligas", response_model=List[schemas.Liga])
+def listar_ligas(admin: models.Usuario = Depends(admin_atual)):
+    return [{"id": k, "nome": v} for k, v in LIGAS.items()]
+
+
+@app.get("/api/v1/admin/jogos", response_model=List[schemas.JogoEspn])
+def buscar_jogos(
+    liga: str,
+    dias: int = 14,
+    db: Session = Depends(get_db),
+    admin: models.Usuario = Depends(admin_atual),
+):
+    """Próximos jogos de um campeonato (ESPN), para importar como bolão."""
+    if liga not in LIGAS:
+        raise HTTPException(status_code=400, detail="Campeonato inválido.")
+    jogos = buscar_proximos(liga, dias)
+    ids = [j["espn_id"] for j in jogos]
+    importados = dict(
+        db.query(models.BolaoIssue.espn_id, models.BolaoIssue.issue_key)
+        .filter(models.BolaoIssue.espn_id.in_(ids))
+        .all()
+    ) if ids else {}
+    return [{**j, "ja_importado": importados.get(j["espn_id"])} for j in jogos]
 
 
 @app.post("/api/v1/tickets/{issue_key}/resultado", response_model=schemas.BolaoAdmin)

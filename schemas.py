@@ -76,6 +76,9 @@ class BolaoEdicao(Odds):
 
 class BolaoCreate(BolaoEdicao):
     data_encerramento: datetime
+    # Preenchidos quando o jogo vem de "Buscar jogos" (ESPN)
+    espn_id: Optional[str] = Field(None, max_length=20, pattern=r"^\d+$")
+    espn_liga: Optional[str] = Field(None, max_length=40)
 
     @field_validator('data_encerramento')
     @classmethod
@@ -201,11 +204,34 @@ class BolaoAdmin(BaseModel):
     total_apostado: int
     total_pago: int
     vencedores: int
+    # Placar da ESPN, para o admin conferir antes de pagar (só em jogos importados)
+    espn_estado: Optional[str] = None      # "pre", "in" ou "post"
+    espn_situacao: Optional[str] = None    # ex: "FT", "45'"
+    placar_espn_a: Optional[int] = None
+    placar_espn_b: Optional[int] = None
 
 
 class PainelResultados(BaseModel):
     pendentes: List[BolaoAdmin]   # já fecharam para palpites, falta lançar o placar
     encerrados: List[BolaoAdmin]  # já pagos (os mais recentes)
+
+
+# --- Buscar jogos (ESPN) ---
+class Liga(BaseModel):
+    id: str
+    nome: str
+
+
+class JogoEspn(BaseModel):
+    espn_id: str
+    liga: str
+    liga_nome: str
+    data: datetime  # UTC, horário de início
+    time_a: str
+    escudo_a: Optional[str] = None
+    time_b: str
+    escudo_b: Optional[str] = None
+    ja_importado: Optional[str] = None  # código do bolão (ex: KAN-7) se já foi criado
 
 
 # --- Gestão de contas (admin) ---

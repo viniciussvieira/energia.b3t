@@ -21,6 +21,9 @@ class BolaoIssue(Base):
     gols_final_a = Column(Integer, nullable=True)
     gols_final_b = Column(Integer, nullable=True)
     encerrado_em = Column(DateTime, nullable=True)  # quando o admin lançou o resultado e pagou
+    # Jogo importado da ESPN (vazio se o bolão foi criado na mão)
+    espn_id = Column(String, nullable=True, index=True)
+    espn_liga = Column(String, nullable=True)
     data_encerramento = Column(DateTime)  # Sempre em UTC
     status = Column(String, default="TO DO")
     criado_em = Column(DateTime, default=datetime.datetime.utcnow)

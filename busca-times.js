@@ -150,6 +150,7 @@ const BuscaTime = (() => {
             get nome() { return input.value.trim(); },
             get escudo() { return escudo; },
             limpar() { input.value = ''; definirEscudo(null); },
+            definir(nome, url) { input.value = nome; definirEscudo(url); },
         };
     }
 
