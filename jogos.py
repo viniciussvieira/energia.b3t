@@ -17,6 +17,36 @@ from times import LIGAS, PREFIXO_ESCUDO
 
 PLACAR_URL = "https://site.api.espn.com/apis/site/v2/sports/soccer/{liga}/scoreboard?dates={dia}"
 CACHE_SEGUNDOS = 10 * 60   # calendário e placares mudam pouco; evita bater na ESPN a cada clique
+
+# Fases do mata-mata como a ESPN escreve -> português
+FASES = {
+    "first stage": "1ª fase", "second stage": "2ª fase", "third stage": "3ª fase",
+    "first round": "1ª fase", "second round": "2ª fase", "third round": "3ª fase",
+    "fourth round": "4ª fase", "fifth round": "5ª fase",
+    "group": "Fase de grupos", "group stage": "Fase de grupos",
+    "knockout round playoffs": "Playoffs", "playoffs": "Playoffs", "playoff round": "Playoffs",
+    "rd of 32": "16 avos de final", "round of 32": "16 avos de final",
+    "rd of 16": "Oitavas de final", "round of 16": "Oitavas de final",
+    "quarterfinals": "Quartas de final", "quarter-finals": "Quartas de final",
+    "semifinals": "Semifinal", "semi-finals": "Semifinal",
+    "third place": "Disputa de 3º lugar", "final": "Final",
+}
+JOGO_MATA = {1: "Ida", 2: "Volta"}
+
+
+def _fase(comp: dict, ev: dict) -> str | None:
+    """'Semifinal · Ida' para jogos de mata-mata; None para pontos corridos."""
+    titulo = ((comp.get("series") or {}).get("title") or "").strip()
+    if not titulo:
+        slug = ((ev.get("season") or {}).get("slug") or "").replace("-", " ").strip()
+        titulo = slug if slug.lower() in FASES else ""
+    if not titulo:
+        return None
+    fase = FASES.get(titulo.lower(), titulo)
+    if titulo.lower().startswith("group "):  # "Group A" -> "Grupo A"
+        fase = "Grupo " + titulo[6:]
+    perna = JOGO_MATA.get((comp.get("leg") or {}).get("value"))
+    return f"{fase} · {perna}" if perna else fase
 MAX_DIAS = 30
 
 _cache: dict[tuple[str, str], tuple[float, list[dict]]] = {}
@@ -68,6 +98,9 @@ def _converter_evento(ev: dict, liga: str) -> dict | None:
         "situacao": status.get("shortDetail") or status.get("detail") or "",
         "placar_a": _gols(casa.get("score")),
         "placar_b": _gols(fora.get("score")),
+        "time_a_id": str((casa.get("team") or {}).get("id") or ""),
+        "time_b_id": str((fora.get("team") or {}).get("id") or ""),
+        "fase": _fase(comp, ev),
     }
 
 
@@ -115,7 +148,34 @@ def buscar_proximos(liga: str, dias: int = 14) -> list[dict]:
             vistos.add(j["espn_id"])
             if j["estado"] == "pre" and j["data"] > agora:
                 jogos.append(j)
-    return sorted(jogos, key=lambda j: j["data"])
+    jogos.sort(key=lambda j: j["data"])
+    _sugerir_rodadas(liga, jogos)
+    return jogos
+
+
+def _sugerir_rodadas(liga: str, jogos: list[dict]) -> None:
+    """Preenche j['rodada'] ('Rodada 35', 'Semifinal · Ida'...).
+
+    Mata-mata: a ESPN informa a fase. Pontos corridos: a ESPN não informa a rodada, então
+    calculamos pela tabela: jogos já disputados pelo time + jogos dele que vêm antes na lista + 1.
+    Usamos o maior entre os dois times (o outro pode ter um jogo adiado). É só uma sugestão:
+    o admin pode corrigir.
+    """
+    from odds import tabela  # import aqui para evitar import circular
+    tab = None
+    proximos_do_time: dict[str, int] = {}
+    for j in jogos:
+        if j["fase"]:
+            j["rodada"] = j["fase"]
+            continue
+        if tab is None:
+            tab = tabela(liga)["times"]
+        candidatos = []
+        for tid in (j["time_a_id"], j["time_b_id"]):
+            if tid in tab:
+                candidatos.append(tab[tid]["jogos"] + proximos_do_time.get(tid, 0) + 1)
+            proximos_do_time[tid] = proximos_do_time.get(tid, 0) + 1
+        j["rodada"] = f"Rodada {max(candidatos)}" if candidatos else None
 
 
 def placar_do_jogo(liga: str | None, espn_id: str | None, data: datetime | None) -> dict | None:

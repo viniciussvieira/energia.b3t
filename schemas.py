@@ -57,6 +57,14 @@ class BolaoEdicao(Odds):
     time_b: str = Field(..., min_length=2, max_length=50)
     escudo_a: Optional[str] = Field(None, max_length=500)
     escudo_b: Optional[str] = Field(None, max_length=500)
+    campeonato: Optional[str] = Field(None, max_length=60)   # ex: "Brasileirão Série A", "Amistoso"
+    rodada: Optional[str] = Field(None, max_length=60)       # ex: "Rodada 35", "Semifinal · Ida"
+
+    @field_validator('campeonato', 'rodada')
+    @classmethod
+    def texto_opcional(cls, v):
+        v = (v or '').strip()
+        return v or None
 
     @field_validator('time_a', 'time_b')
     @classmethod
@@ -95,6 +103,8 @@ class BolaoResponse(BaseModel):
     time_b: str
     escudo_a: Optional[str] = None
     escudo_b: Optional[str] = None
+    campeonato: Optional[str] = None
+    rodada: Optional[str] = None
     odd_casa: Optional[float] = None
     odd_empate: Optional[float] = None
     odd_fora: Optional[float] = None
@@ -122,6 +132,8 @@ class MeuPalpite(BaseModel):
     time_b: str
     escudo_a: Optional[str] = None
     escudo_b: Optional[str] = None
+    campeonato: Optional[str] = None
+    rodada: Optional[str] = None
     data_encerramento: datetime  # UTC
     aberto: bool  # ainda dá para palpitar nesse bolão?
     gols_time_a: int
@@ -143,6 +155,8 @@ class BolaoAberto(BaseModel):
     time_b: str
     escudo_a: Optional[str] = None
     escudo_b: Optional[str] = None
+    campeonato: Optional[str] = None
+    rodada: Optional[str] = None
     odd_casa: Optional[float] = None
     odd_empate: Optional[float] = None
     odd_fora: Optional[float] = None
@@ -196,6 +210,8 @@ class BolaoAdmin(BaseModel):
     time_b: str
     escudo_a: Optional[str] = None
     escudo_b: Optional[str] = None
+    campeonato: Optional[str] = None
+    rodada: Optional[str] = None
     data_encerramento: datetime
     gols_final_a: Optional[int] = None
     gols_final_b: Optional[int] = None
@@ -231,6 +247,7 @@ class JogoEspn(BaseModel):
     escudo_a: Optional[str] = None
     time_b: str
     escudo_b: Optional[str] = None
+    rodada: Optional[str] = None  # "Rodada 35" (estimada pela tabela) ou "Semifinal · Ida"
     ja_importado: Optional[str] = None  # código do bolão (ex: KAN-7) se já foi criado
 
 

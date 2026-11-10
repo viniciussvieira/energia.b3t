@@ -400,6 +400,13 @@
 
         .form-odds { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
         .rotulo-edicao { font-size: 0.82em; font-weight: 600; color: var(--text-muted); margin-bottom: -4px; }
+        .edit-linha2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 4px; }
+        .edit-linha2 .rotulo-edicao { display: flex; flex-direction: column; gap: 4px; margin: 0; }
+        .edit-linha2 input {
+            width: 100%; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 8px;
+            padding: 9px 10px; color: var(--text-main); font-size: 1.1em; font-weight: 400;
+        }
+        .edit-linha2 input:focus { outline: none; border-color: var(--accent); }
         .form-editar input[type="text"] {
             width: 100%;
             background: var(--bg-primary);
@@ -448,6 +455,30 @@
             display: inline-block; min-width: 20px; margin-left: 6px; padding: 0 6px; border-radius: 999px;
             background: rgba(88, 166, 255, 0.12); color: var(--accent); font-size: 0.78em;
         }
+
+        /* --- Filtro por campeonato --- */
+        .filtros { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin: -8px 0 24px; }
+        .filtro {
+            background: transparent; border: 1px solid var(--border); color: var(--text-muted);
+            border-radius: 999px; padding: 6px 14px; font-size: 0.88em; font-weight: 600; cursor: pointer;
+            transition: color 0.3s, border-color 0.3s, background 0.3s;
+        }
+        .filtro:hover { color: var(--text-main); border-color: var(--text-muted); }
+        .filtro[aria-pressed="true"] { color: var(--accent); border-color: var(--accent); background: rgba(88, 166, 255, 0.1); }
+        .filtro .qtd { opacity: 0.7; margin-left: 4px; font-weight: 500; }
+
+        /* --- Grupos (campeonato + rodada/fase) --- */
+        .grupo-titulo {
+            grid-column: 1 / -1;
+            display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;
+            font-size: 1.1em; padding-bottom: 8px; margin-top: 10px;
+            border-bottom: 1px solid var(--border);
+        }
+        .grupo-titulo:first-child { margin-top: 0; }
+        .grupo-titulo i { color: var(--accent); }
+        .grupo-titulo .rodada { color: var(--accent); font-weight: 600; }
+        .grupo-titulo small { color: var(--text-muted); font-weight: 500; font-size: 0.78em; }
+        .pi-info .camp { color: var(--text-muted); }
 
         /* Palpites já feitos dentro do card */
         .meus-no-card {
@@ -610,6 +641,8 @@
             <button class="aba" id="aba-resultados" role="tab" aria-selected="false" aria-controls="resultados" hidden>Resultados<span class="contador" id="contador-resultados" hidden></span></button>
         </div>
 
+        <div class="filtros" id="filtros" role="toolbar" aria-label="Filtrar por campeonato" hidden></div>
+
         <section id="resultados" role="tabpanel" aria-labelledby="aba-resultados" hidden>
             <div class="lista-palpites" id="lista-resultados"><p class="carregando">Carregando...</p></div>
         </section>
@@ -736,6 +769,12 @@
                 <div class="slot-edicao" data-lado="a"></div>
                 <label class="rotulo-edicao" for="edit-b-${k}">Time visitante</label>
                 <div class="slot-edicao" data-lado="b"></div>
+                <div class="edit-linha2">
+                    <label class="rotulo-edicao">Campeonato
+                        <input type="text" name="campeonato" maxlength="60" value="${esc(b.campeonato || '')}" placeholder="Ex: Brasileirão Série A"></label>
+                    <label class="rotulo-edicao">Rodada ou fase
+                        <input type="text" name="rodada" maxlength="60" value="${esc(b.rodada || '')}" placeholder="Ex: Rodada 35"></label>
+                </div>
                 <span class="rotulo-edicao">ODDs</span>
                 <div class="odds">
                     ${odd('odd_casa', 'Mandante', b.odd_casa)}
@@ -834,6 +873,8 @@
     }
 
     function renderizar(boloes, isAdmin) {
+        boloesDados = boloes;
+        renderizarFiltros();
         const lista = document.getElementById('lista');
         if (!boloes.length) {
             lista.innerHTML = `<div class="vazio" style="grid-column: 1 / -1">
@@ -844,8 +885,56 @@
             return;
         }
         boloesPorKey = Object.fromEntries(boloes.map(b => [b.issue_key, b]));
-        lista.innerHTML = boloes.map(htmlCard).join('');
+        const visiveis = filtro ? boloes.filter(b => campDe(b) === filtro) : boloes;
+        if (!visiveis.length) {
+            lista.innerHTML = `<div class="vazio" style="grid-column: 1 / -1"><i class="fas fa-filter"></i>
+                Nenhum bolão aberto em <strong>${esc(filtro)}</strong> agora.</div>`;
+            return;
+        }
+        // Agrupa por campeonato + rodada/fase, mantendo a ordem de fechamento (o que fecha primeiro aparece antes)
+        const grupos = new Map();
+        for (const b of visiveis) {
+            const chave = `${campDe(b)}||${b.rodada || ''}`;
+            if (!grupos.has(chave)) grupos.set(chave, { camp: campDe(b), rodada: b.rodada, itens: [] });
+            grupos.get(chave).itens.push(b);
+        }
+        lista.innerHTML = [...grupos.values()].map(g => `
+            <h2 class="grupo-titulo"><i class="fas fa-trophy"></i> ${esc(g.camp)}
+                ${g.rodada ? `<span class="rodada">· ${esc(g.rodada)}</span>` : ''}
+                <small>${g.itens.length} jogo${g.itens.length === 1 ? '' : 's'}</small></h2>
+            ${g.itens.map(htmlCard).join('')}`).join('');
     }
+
+    // --- Filtro por campeonato (vale para "Bolões abertos" e "Meus palpites") ---
+    const OUTROS = 'Outros';
+    const campDe = x => x.campeonato || OUTROS;
+    let filtro = '';
+    try { filtro = localStorage.getItem('kanvira_filtro') || ''; } catch (e) { /* ignora */ }
+    let boloesDados = [], meusDados = null, abaAtual = 'boloes';
+
+    function renderizarFiltros() {
+        const caixa = document.getElementById('filtros');
+        if (abaAtual === 'resultados') { caixa.hidden = true; return; }
+        const base = abaAtual === 'meus' ? (meusDados || []) : boloesDados;
+        const contagem = new Map();
+        for (const x of base) contagem.set(campDe(x), (contagem.get(campDe(x)) || 0) + 1);
+        const nomes = [...contagem.keys()].sort((a, b) => (a === OUTROS) - (b === OUTROS) || contagem.get(b) - contagem.get(a) || a.localeCompare(b));
+        if (filtro && !contagem.has(filtro)) nomes.push(filtro);  // mantém o filtro escolhido visível, com 0
+        caixa.hidden = nomes.length <= 1 && !filtro;
+        const chip = (valor, rotulo, qtd) =>
+            `<button type="button" class="filtro" data-filtro="${esc(valor)}" aria-pressed="${filtro === valor}">${esc(rotulo)}<span class="qtd">${qtd}</span></button>`;
+        caixa.innerHTML = chip('', 'Todos', base.length) + nomes.map(n => chip(n, n, contagem.get(n) || 0)).join('');
+    }
+
+    document.getElementById('filtros').addEventListener('click', e => {
+        const b = e.target.closest('.filtro');
+        if (!b) return;
+        filtro = b.dataset.filtro;
+        try { localStorage.setItem('kanvira_filtro', filtro); } catch (err) { /* ignora */ }
+        renderizar(boloesDados, isAdmin);
+        renderizarMeus();
+        renderizarFiltros();
+    });
 
     let boloesPorKey = {};
 
@@ -910,6 +999,8 @@
         const odds = {
             time_a: campos.a.nome, time_b: campos.b.nome,
             escudo_a: campos.a.escudo, escudo_b: campos.b.escudo,
+            campeonato: form.campeonato.value.trim() || null,
+            rodada: form.rodada.value.trim() || null,
         };
         for (const nome of ['odd_casa', 'odd_empate', 'odd_fora', 'odd_placar']) {
             const v = parseFloat(String(form[nome].value).replace(',', '.'));
@@ -994,6 +1085,8 @@
             document.getElementById(a.botao).setAttribute('aria-selected', chave === qual);
             document.getElementById(a.painel).hidden = chave !== qual;
         }
+        abaAtual = qual;
+        renderizarFiltros();
         document.getElementById('titulo-aba').textContent = ABAS[qual].titulo;
         document.getElementById('sub-aba').innerHTML = ABAS[qual].sub;
         if (qual === 'meus' && !meusCarregados) carregarMeus();
@@ -1042,10 +1135,30 @@
             <span class="selo-status ${classe}">${texto}</span>
             <div class="pi-info">
                 <span><span class="tag">${esc(p.issue_key)}</span></span>
+                <span class="camp">${esc(campDe(p))}${p.rodada ? ` · ${esc(p.rodada)}` : ''}</span>
                 <span>Apostou <b>${fmtJC(p.valor)} JC</b> em ${quando}</span>
                 ${final || ganhos}
             </div>
         </article>`;
+    }
+
+    function renderizarMeus() {
+        if (!meusDados) return;
+        const alvo = document.getElementById('lista-meus');
+        const dados = filtro ? meusDados.filter(p => campDe(p) === filtro) : meusDados;
+        const apostado = dados.reduce((s, p) => s + p.valor, 0);
+        const ganho = dados.reduce((s, p) => s + (p.premio || 0), 0);
+        const acertos = dados.filter(p => p.situacao === 'placar' || p.situacao === 'resultado').length;
+        document.getElementById('resumo-meus').innerHTML = dados.length
+            ? (filtro ? `<strong>${esc(filtro)}</strong> · ` : '')
+              + `<strong>${dados.length}</strong> palpite${dados.length === 1 ? '' : 's'} · <strong>${fmtJC(apostado)}</strong> JC apostadas`
+              + (ganho ? ` · <strong style="color:var(--success)">${fmtJC(ganho)}</strong> JC recebidas em ${acertos} acerto${acertos === 1 ? '' : 's'}` : '')
+            : '';
+        alvo.innerHTML = dados.length
+            ? dados.map(htmlMeuPalpite).join('')
+            : meusDados.length
+                ? `<div class="vazio"><i class="fas fa-filter"></i> Nenhum palpite seu em <strong>${esc(filtro)}</strong>.</div>`
+                : '<div class="vazio"><i class="fas fa-futbol"></i> Você ainda não fez nenhum palpite.</div>';
     }
 
     async function carregarMeus() {
@@ -1056,16 +1169,9 @@
             meusCarregados = true;
             totalMeus = dados.length;
             atualizarContador();
-            const apostado = dados.reduce((s, p) => s + p.valor, 0);
-            const ganho = dados.reduce((s, p) => s + (p.premio || 0), 0);
-            const acertos = dados.filter(p => p.situacao === 'placar' || p.situacao === 'resultado').length;
-            document.getElementById('resumo-meus').innerHTML = dados.length
-                ? `<strong>${dados.length}</strong> palpite${dados.length === 1 ? '' : 's'} · <strong>${fmtJC(apostado)}</strong> JC apostadas`
-                  + (ganho ? ` · <strong style="color:var(--success)">${fmtJC(ganho)}</strong> JC recebidas em ${acertos} acerto${acertos === 1 ? '' : 's'}` : '')
-                : '';
-            alvo.innerHTML = dados.length
-                ? dados.map(htmlMeuPalpite).join('')
-                : '<div class="vazio"><i class="fas fa-futbol"></i> Você ainda não fez nenhum palpite.</div>';
+            meusDados = dados;
+            renderizarMeus();
+            renderizarFiltros();
         } catch (err) {
             if (err.message !== 'sessão expirada') alvo.innerHTML = '<p class="vazio">Não foi possível carregar seus palpites.</p>';
         }

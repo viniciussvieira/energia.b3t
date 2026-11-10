@@ -43,7 +43,7 @@ def migrar_banco():
         for coluna, tipo in (("gols_final_a", "INTEGER"), ("gols_final_b", "INTEGER"), ("encerrado_em", "TIMESTAMP")):
             if coluna not in colunas_bolao:
                 conn.execute(text(f"ALTER TABLE bolao_issues ADD COLUMN {coluna} {tipo}"))
-        for coluna in ("espn_id", "espn_liga"):
+        for coluna in ("espn_id", "espn_liga", "campeonato", "rodada"):
             if coluna not in colunas_bolao:
                 conn.execute(text(f"ALTER TABLE bolao_issues ADD COLUMN {coluna} VARCHAR"))
         for coluna, tipo in (("premio", "INTEGER"), ("situacao", "VARCHAR")):
@@ -203,6 +203,11 @@ def meu_perfil(usuario: models.Usuario = Depends(usuario_atual)):
 
 
 # --- Bolões ---
+def nome_campeonato(b: models.BolaoIssue) -> str | None:
+    """Campeonato do bolão; para bolões antigos importados, usa o nome do campeonato da ESPN."""
+    return b.campeonato or LIGAS.get(b.espn_liga or "") or None
+
+
 def gerar_issue_key(db: Session, prefixo: str = "KAN") -> str:
     """Gerar a chave sequencial estilo Kanvira (ex: KAN-1, KAN-2)"""
     ultimo_ticket = db.query(models.BolaoIssue).order_by(models.BolaoIssue.id.desc()).first()
@@ -239,6 +244,8 @@ def _criar_bolao(db: Session, bolao: schemas.BolaoCreate) -> models.BolaoIssue:
         time_b=bolao.time_b,
         escudo_a=bolao.escudo_a,
         escudo_b=bolao.escudo_b,
+        campeonato=bolao.campeonato or (LIGAS.get(bolao.espn_liga) if bolao.espn_id else None),
+        rodada=bolao.rodada,
         odd_casa=bolao.odd_casa,
         odd_empate=bolao.odd_empate,
         odd_fora=bolao.odd_fora,
@@ -331,6 +338,8 @@ def meus_palpites(db: Session = Depends(get_db), usuario: models.Usuario = Depen
         "time_b": b.time_b,
         "escudo_a": b.escudo_a,
         "escudo_b": b.escudo_b,
+        "campeonato": nome_campeonato(b),
+        "rodada": b.rodada,
         "data_encerramento": b.data_encerramento,
         "aberto": b.data_encerramento > agora and b.encerrado_em is None,
         "gols_time_a": a.gols_time_a,
@@ -384,6 +393,7 @@ def _bolao_admin(db: Session, b: models.BolaoIssue) -> dict:
     return {
         "issue_key": b.issue_key, "time_a": b.time_a, "time_b": b.time_b,
         "escudo_a": b.escudo_a, "escudo_b": b.escudo_b,
+        "campeonato": nome_campeonato(b), "rodada": b.rodada,
         "data_encerramento": b.data_encerramento,
         "gols_final_a": b.gols_final_a, "gols_final_b": b.gols_final_b, "encerrado_em": b.encerrado_em,
         "total_apostas": total, "total_apostado": apostado, "total_pago": pago, "vencedores": vencedores,
@@ -555,6 +565,8 @@ def listar_boloes_abertos(
             "time_b": b.time_b,
             "escudo_a": b.escudo_a,
             "escudo_b": b.escudo_b,
+            "campeonato": nome_campeonato(b),
+            "rodada": b.rodada,
             "odd_casa": b.odd_casa,
             "odd_empate": b.odd_empate,
             "odd_fora": b.odd_fora,

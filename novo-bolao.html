@@ -443,6 +443,12 @@
         }
         .lote-odds input:focus { outline: none; border-color: var(--accent); }
         .lote-info { font-size: 0.78em; color: var(--text-muted); }
+        .lote-rodada { display: flex; align-items: center; gap: 8px; font-size: 0.78em; color: var(--text-muted); }
+        .lote-rodada input {
+            flex: 1; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 6px;
+            padding: 6px 8px; color: var(--text-main); font-size: 1.1em;
+        }
+        .lote-rodada input:focus { outline: none; border-color: var(--accent); }
         .lote-info.ok { color: var(--success); font-weight: 600; font-size: 0.88em; }
         .lote-info.erro { color: var(--error); font-weight: 600; font-size: 0.88em; }
         .lote .linha-botoes { display: flex; gap: 8px; }
@@ -467,6 +473,9 @@
         .importado b { color: var(--text-main); }
         .importado button { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 0.95em; }
         .importado button:hover { color: var(--error); }
+
+        .form-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        @media (max-width: 480px) { .form-row-2 { grid-template-columns: 1fr; } }
 
         /* --- ODDs sugeridas --- */
         .linha-odds-titulo { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: -6px; }
@@ -574,6 +583,26 @@
                 <div class="slot-time" data-lado="b" data-placeholder="Digite para buscar, ex: Vasco"></div>
             </div>
             <span class="hint" style="margin-top:-10px">Escolha o time na lista para usar o escudo. Se não achar, pode digitar o nome mesmo.</span>
+            <div class="form-row-2">
+                <div class="form-group">
+                    <label for="campeonato">Campeonato</label>
+                    <input type="text" id="campeonato" maxlength="60" list="lista-campeonatos" placeholder="Ex: Brasileirão Série A">
+                </div>
+                <div class="form-group">
+                    <label for="rodada">Rodada ou fase</label>
+                    <input type="text" id="rodada" maxlength="60" list="lista-fases" placeholder="Ex: Rodada 35, Semifinal">
+                </div>
+            </div>
+            <datalist id="lista-fases">
+                <option value="Rodada 1"></option>
+                <option value="Fase de grupos"></option>
+                <option value="Oitavas de final · Ida"></option><option value="Oitavas de final · Volta"></option>
+                <option value="Quartas de final · Ida"></option><option value="Quartas de final · Volta"></option>
+                <option value="Semifinal · Ida"></option><option value="Semifinal · Volta"></option>
+                <option value="Final"></option>
+                <option value="Amistoso"></option>
+            </datalist>
+            <datalist id="lista-campeonatos"><option value="Amistoso"></option><option value="Pelada da galera"></option></datalist>
             <div class="form-group">
                 <label for="data_encerramento">Fechamento das apostas</label>
                 <input type="datetime-local" id="data_encerramento" required>
@@ -679,6 +708,8 @@
                 method: 'POST',
                 body: JSON.stringify({
                     time_a, time_b,
+                    campeonato: document.getElementById('campeonato').value.trim() || null,
+                    rodada: document.getElementById('rodada').value.trim() || null,
                     escudo_a: campos.a.escudo, escudo_b: campos.b.escudo,
                     ...odds,
                     data_encerramento: data.toISOString(),
@@ -740,6 +771,8 @@
             const { ok, dados } = await api('/admin/ligas');
             if (!ok) throw new Error();
             sel.innerHTML = dados.map(l => `<option value="${escTexto(l.id)}">${escTexto(l.nome)}</option>`).join('');
+            document.getElementById('lista-campeonatos').insertAdjacentHTML('afterbegin',
+                dados.map(l => `<option value="${escTexto(l.nome)}"></option>`).join(''));
         } catch (err) {
             sel.innerHTML = '<option value="">Não foi possível carregar</option>';
         }
@@ -762,7 +795,7 @@
                 return `<li data-i="${i}">
                     <input type="checkbox" class="marcar" data-i="${i}" ${j.ja_importado ? 'disabled title="Já tem bolão"' : ''} aria-label="Selecionar ${escTexto(j.time_a)} x ${escTexto(j.time_b)}">
                     <span class="jogo-times">${mini(j.escudo_a)}${escTexto(j.time_a)} <span style="color:var(--text-muted)">x</span> ${escTexto(j.time_b)}${mini(j.escudo_b)}</span>
-                    <span class="jogo-quando">${quando} · ${escTexto(j.liga_nome)}</span>
+                    <span class="jogo-quando">${quando} · ${escTexto(j.liga_nome)}${j.rodada ? ` · ${escTexto(j.rodada)}` : ''}</span>
                     ${j.ja_importado ? `<span class="ja">Já tem bolão<br><b>${escTexto(j.ja_importado)}</b></span>`
                                      : `<button type="button" class="usar" data-i="${i}">Usar</button>`}
                 </li>`;
@@ -781,6 +814,8 @@
         campos.a.definir(j.time_a, j.escudo_a);
         campos.b.definir(j.time_b, j.escudo_b);
         document.getElementById('data_encerramento').value = paraCampoData(dataUTC(j.data));
+        document.getElementById('campeonato').value = j.liga_nome || '';
+        document.getElementById('rodada').value = j.rodada || '';
         document.getElementById('importado-nome').textContent = `${j.time_a} x ${j.time_b}`;
         document.getElementById('importado').hidden = false;
         atualizarRotulosOdds();
@@ -863,6 +898,8 @@
                 <span class="jogo-times">${mini(j.escudo_a)}${escTexto(j.time_a)} x ${escTexto(j.time_b)}${mini(j.escudo_b)} <small>${quando}</small></span>
                 <button type="button" class="tirar" title="Tirar da lista" aria-label="Tirar da lista">✕</button>
             </div>
+            <label class="lote-rodada">Rodada ou fase
+                <input type="text" name="rodada" maxlength="60" list="lista-fases" value="${escTexto(j.rodada || '')}" placeholder="Ex: Rodada 35"></label>
             <div class="lote-odds">
                 ${campo('odd_casa', j.time_a)}${campo('odd_empate', 'Empate')}${campo('odd_fora', j.time_b)}${campo('odd_placar', 'Placar exato')}
             </div>
@@ -932,6 +969,7 @@
             }
             enviar.push({
                 time_a: j.time_a, time_b: j.time_b, escudo_a: j.escudo_a, escudo_b: j.escudo_b,
+                campeonato: j.liga_nome, rodada: item.querySelector('[name="rodada"]').value.trim() || null,
                 ...odds, data_encerramento: dataUTC(j.data).toISOString(),
                 espn_id: j.espn_id, espn_liga: j.liga,
             });

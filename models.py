@@ -24,6 +24,9 @@ class BolaoIssue(Base):
     # Jogo importado da ESPN (vazio se o bolão foi criado na mão)
     espn_id = Column(String, nullable=True, index=True)
     espn_liga = Column(String, nullable=True)
+    # Organização para os jogadores: "Brasileirão Série A" / "Rodada 35", "Copa do Brasil" / "Semifinal · Ida"
+    campeonato = Column(String, nullable=True, index=True)
+    rodada = Column(String, nullable=True)
     data_encerramento = Column(DateTime)  # Sempre em UTC
     status = Column(String, default="TO DO")
     criado_em = Column(DateTime, default=datetime.datetime.utcnow)
