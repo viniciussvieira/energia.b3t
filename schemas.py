@@ -234,6 +234,32 @@ class JogoEspn(BaseModel):
     ja_importado: Optional[str] = None  # código do bolão (ex: KAN-7) se já foi criado
 
 
+# --- ODDs sugeridas ---
+class TimeTabela(BaseModel):
+    nome: str
+    posicao: Optional[int] = None
+    jogos: int
+    gols_pro: int
+    gols_contra: int
+    pontos: int
+    liga: str
+
+
+class OddsSugeridas(BaseModel):
+    odd_casa: float
+    odd_empate: float
+    odd_fora: float
+    odd_placar: float
+    prob_casa: float
+    prob_empate: float
+    prob_fora: float
+    placar_provavel: str
+    gols_esperados_a: float
+    gols_esperados_b: float
+    time_a: Optional[TimeTabela] = None  # vazio = time não encontrado na tabela
+    time_b: Optional[TimeTabela] = None
+
+
 # --- Gestão de contas (admin) ---
 class ContaAdmin(BaseModel):
     id: int

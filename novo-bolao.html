@@ -426,6 +426,22 @@
         .importado button { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 0.95em; }
         .importado button:hover { color: var(--error); }
 
+        /* --- ODDs sugeridas --- */
+        .linha-odds-titulo { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: -6px; }
+        .linha-odds-titulo .secao-titulo { margin-bottom: 0; }
+        .btn-sugerir {
+            background: transparent; border: 1px solid var(--accent); color: var(--accent);
+            border-radius: 8px; padding: 5px 12px; font-weight: 600; cursor: pointer; font-size: 0.82em;
+        }
+        .btn-sugerir:hover { background: rgba(88, 166, 255, 0.12); }
+        .btn-sugerir:disabled { opacity: 0.6; cursor: wait; }
+        .base-odds {
+            background: rgba(88, 166, 255, 0.06); border: 1px solid rgba(88, 166, 255, 0.25);
+            border-radius: 8px; padding: 10px 12px; font-size: 0.82em; color: var(--text-muted);
+            display: flex; flex-direction: column; gap: 3px; margin-top: -6px;
+        }
+        .base-odds b { color: var(--text-main); }
+
         /* --- ODDs --- */
         .odds-grid {
             display: grid;
@@ -506,7 +522,10 @@
                 <input type="datetime-local" id="data_encerramento" required>
                 <span class="hint">No seu horário local. Normalmente, o horário de início do jogo.</span>
             </div>
-            <div class="secao-titulo"><i class="fas fa-percent"></i> ODDs (multiplicador pago a quem acertar)</div>
+            <div class="linha-odds-titulo">
+                <div class="secao-titulo"><i class="fas fa-percent"></i> ODDs (multiplicador pago a quem acertar)</div>
+                <button type="button" class="btn-sugerir" id="btn-sugerir"><i class="fas fa-wand-magic-sparkles"></i> Sugerir ODDs</button>
+            </div>
             <div class="odds-grid">
                 <div class="form-group">
                     <label for="odd_casa" id="lbl-odd-casa">Vitória do mandante</label>
@@ -525,6 +544,7 @@
                     <input type="number" id="odd_placar" min="1.01" step="0.01" inputmode="decimal" placeholder="8.00" required>
                 </div>
             </div>
+            <div class="base-odds" id="base-odds" hidden></div>
             <span class="hint" style="margin-top:-8px">Ex: ODD 1.80 e aposta de 100 JC → recebe 180 JC se acertar. Dá para editar depois na tela de bolões.</span>
 
             <button type="submit" class="btn"><i class="fas fa-plus"></i> Criar bolão</button>
@@ -615,6 +635,7 @@
                 campos.a.limpar();
                 campos.b.limpar();
                 atualizarRotulosOdds();
+                document.getElementById('base-odds').hidden = true;
                 const eraImportado = !!jogoImportado;
                 desvincular();
                 if (eraImportado) buscarJogos();  // marca o jogo como "já tem bolão" na lista
@@ -702,11 +723,42 @@
         document.getElementById('importado-nome').textContent = `${j.time_a} x ${j.time_b}`;
         document.getElementById('importado').hidden = false;
         atualizarRotulosOdds();
-        setStatus('Jogo carregado! Agora preencha as ODDs e clique em Criar bolão.', 'success');
+        setStatus('Jogo carregado com ODDs sugeridas. Confira e clique em Criar bolão.', 'success');
+        sugerirOdds();
         const odd = document.getElementById('odd_casa');
         odd.scrollIntoView({ behavior: 'smooth', block: 'center' });
         odd.focus({ preventScroll: true });
     }
+
+    // --- ODDs sugeridas (calculadas pela tabela do campeonato) ---
+    const idDoEscudo = url => (String(url || '').match(/\/(\d+)\.png/) || [])[1] || '';
+
+    async function sugerirOdds() {
+        const botao = document.getElementById('btn-sugerir');
+        const caixa = document.getElementById('base-odds');
+        const liga = jogoImportado ? jogoImportado.liga : (document.getElementById('sel-liga').value || 'bra.1');
+        const ida = idDoEscudo(campos.a.escudo), idb = idDoEscudo(campos.b.escudo);
+        botao.disabled = true;
+        try {
+            const { ok, dados: s } = await api(`/admin/odds-sugeridas?liga=${encodeURIComponent(liga)}&time_a_id=${ida}&time_b_id=${idb}`);
+            if (!ok) throw new Error();
+            for (const k of ['odd_casa', 'odd_empate', 'odd_fora', 'odd_placar']) document.getElementById(k).value = s[k].toFixed(2);
+            const nomeA = campos.a.nome || 'Mandante', nomeB = campos.b.nome || 'Visitante';
+            const desc = (t, nome) => t
+                ? `<b>${escTexto(nome)}</b>: ${t.posicao ? `${t.posicao}º · ` : ''}${t.gols_pro} gols pró e ${t.gols_contra} contra em ${t.jogos} jogos (${escTexto(t.liga)})`
+                : `<b>${escTexto(nome)}</b>: sem dados na tabela, tratado como time médio`;
+            caixa.innerHTML = `
+                <span><i class="fas fa-chart-simple"></i> Chances: ${escTexto(nomeA)} <b>${s.prob_casa}%</b> · empate <b>${s.prob_empate}%</b> · ${escTexto(nomeB)} <b>${s.prob_fora}%</b> · placar mais provável <b>${escTexto(s.placar_provavel)}</b></span>
+                <span>${desc(s.time_a, nomeA)}</span>
+                <span>${desc(s.time_b, nomeB)}</span>
+                <span>Sugestão calculada pela tabela do campeonato. Confira e ajuste se quiser.</span>`;
+            caixa.hidden = false;
+        } catch (err) {
+            if (err.message !== 'sessão expirada') { caixa.innerHTML = 'Não foi possível calcular agora. Preencha as ODDs na mão.'; caixa.hidden = false; }
+        }
+        botao.disabled = false;
+    }
+    document.getElementById('btn-sugerir').addEventListener('click', sugerirOdds);
 
     function desvincular() {
         jogoImportado = null;

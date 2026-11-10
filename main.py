@@ -1,7 +1,7 @@
 import math
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
-from typing import List
+from typing import List, Optional
 
 from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -12,6 +12,7 @@ import models, schemas
 from auth import admin_atual, criar_token, gerar_hash_senha, usuario_atual, verificar_senha
 from database import engine, get_db
 from jogos import buscar_proximos, placar_do_jogo
+from odds import sugerir as sugerir_odds
 from times import LIGAS, buscar_times, pre_carregar_times
 
 # Cria as tabelas no banco de dados do Kanvira
@@ -399,6 +400,18 @@ def painel_resultados(db: Session = Depends(get_db), admin: models.Usuario = Dep
 @app.get("/api/v1/admin/ligas", response_model=List[schemas.Liga])
 def listar_ligas(admin: models.Usuario = Depends(admin_atual)):
     return [{"id": k, "nome": v} for k, v in LIGAS.items()]
+
+
+@app.get("/api/v1/admin/odds-sugeridas", response_model=schemas.OddsSugeridas)
+def odds_sugeridas(
+    liga: str = "bra.1",
+    time_a_id: Optional[str] = None,
+    time_b_id: Optional[str] = None,
+    admin: models.Usuario = Depends(admin_atual),
+):
+    """ODDs calculadas pela classificação do campeonato. O admin confere e pode mudar."""
+    ids_validos = lambda v: v if v and v.isdigit() and len(v) <= 12 else None
+    return sugerir_odds(liga, ids_validos(time_a_id), ids_validos(time_b_id))
 
 
 @app.get("/api/v1/admin/jogos", response_model=List[schemas.JogoEspn])
