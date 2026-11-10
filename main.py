@@ -526,6 +526,50 @@ def lancar_resultado(
     return _bolao_admin(db, bolao)
 
 
+# --- Ranking (todos veem; admins e contas bloqueadas ficam de fora) ---
+@app.get("/api/v1/ranking", response_model=schemas.Ranking)
+def ranking(db: Session = Depends(get_db), usuario: models.Usuario = Depends(usuario_atual)):
+    jogadores = (
+        db.query(models.Usuario)
+        .filter(models.Usuario.is_admin.isnot(True))
+        .filter(models.Usuario.ativo.isnot(False))
+        .all()
+    )
+    ids = [j.id for j in jogadores]
+    linhas = (
+        db.query(models.Aposta, models.BolaoIssue)
+        .join(models.BolaoIssue, models.Aposta.bolao_id == models.BolaoIssue.id)
+        .filter(models.Aposta.usuario_id.in_(ids))
+        .all()
+    ) if ids else []
+
+    vazio = lambda: {"palpites": 0, "encerrados": 0, "apostado": 0, "recebido": 0, "lucro": 0,
+                     "acertos_placar": 0, "acertos_resultado": 0}
+    stats = {j.id: {"geral": vazio(), "por_campeonato": {}} for j in jogadores}
+    campeonatos: dict[str, int] = {}
+
+    for a, b in linhas:
+        camp = nome_campeonato(b) or "Outros"
+        alvo = stats[a.usuario_id]
+        por_camp = alvo["por_campeonato"].setdefault(camp, vazio())
+        for s in (alvo["geral"], por_camp):
+            s["palpites"] += 1
+            if a.premio is not None and a.situacao != "devolvido":  # jogo encerrado (devolvidos não contam)
+                s["encerrados"] += 1
+                s["apostado"] += a.valor or 0
+                s["recebido"] += a.premio
+                s["lucro"] = s["recebido"] - s["apostado"]
+                s["acertos_placar"] += a.situacao == "placar"
+                s["acertos_resultado"] += a.situacao == "resultado"
+        if a.premio is not None and a.situacao != "devolvido":
+            campeonatos[camp] = campeonatos.get(camp, 0) + 1
+
+    return {
+        "jogadores": [{"id": j.id, "username": j.username, "saldo": j.saldo, **stats[j.id]} for j in jogadores],
+        "campeonatos": campeonatos,
+    }
+
+
 @app.get("/api/v1/times/busca", response_model=List[schemas.TimeEncontrado])
 def buscar_time(q: str, usuario: models.Usuario = Depends(usuario_atual)):
     """Busca times pelo nome (ex: ?q=fla) e devolve o escudo de cada um."""

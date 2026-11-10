@@ -467,6 +467,45 @@
         .filtro[aria-pressed="true"] { color: var(--accent); border-color: var(--accent); background: rgba(88, 166, 255, 0.1); }
         .filtro .qtd { opacity: 0.7; margin-left: 4px; font-weight: 500; }
 
+        /* --- Ranking --- */
+        .criterios { display: flex; justify-content: center; gap: 4px; margin-bottom: 16px; }
+        .criterio {
+            background: var(--bg-secondary); border: 1px solid var(--border); color: var(--text-muted);
+            padding: 7px 16px; font-weight: 600; font-size: 0.9em; cursor: pointer;
+        }
+        .criterio:first-child { border-radius: 8px 0 0 8px; }
+        .criterio:last-child { border-radius: 0 8px 8px 0; }
+        .criterio[aria-pressed="true"] { color: var(--bg-primary); background: var(--accent); border-color: var(--accent); }
+        .criterio:disabled { opacity: 0.4; cursor: not-allowed; }
+        .nota-ranking { text-align: center; color: var(--text-muted); font-size: 0.85em; margin: -6px 0 16px; }
+        .lista-ranking { list-style: none; max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: 8px; }
+        .linha-ranking {
+            display: grid; grid-template-columns: 44px 40px 1fr auto; align-items: center; gap: 12px;
+            background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px; padding: 12px 16px;
+        }
+        .linha-ranking.eu { border-color: var(--accent); background: rgba(88, 166, 255, 0.07); }
+        .linha-ranking.top1 { border-color: rgba(255, 215, 0, 0.55); }
+        .linha-ranking.top2 { border-color: rgba(192, 192, 192, 0.5); }
+        .linha-ranking.top3 { border-color: rgba(205, 127, 50, 0.55); }
+        .linha-ranking .pos { font-size: 1.4em; font-weight: 800; text-align: center; color: var(--text-muted); }
+        .linha-ranking .avatar {
+            width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            background: rgba(88, 166, 255, 0.12); color: var(--accent); font-weight: 700; text-transform: uppercase;
+        }
+        .linha-ranking .quem { min-width: 0; }
+        .linha-ranking .quem strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .linha-ranking .quem small { color: var(--text-muted); font-size: 0.8em; }
+        .linha-ranking .voce { margin-left: 6px; font-size: 0.7em; color: var(--accent); border: 1px solid rgba(88,166,255,0.4); border-radius: 999px; padding: 1px 7px; vertical-align: middle; }
+        .linha-ranking .valor { text-align: right; }
+        .linha-ranking .valor strong { display: block; font-size: 1.15em; color: var(--accent); white-space: nowrap; }
+        .linha-ranking .valor strong.pos-lucro { color: var(--success); }
+        .linha-ranking .valor strong.neg-lucro { color: var(--error); }
+        .linha-ranking .valor small { color: var(--text-muted); font-size: 0.75em; }
+        @media (max-width: 480px) {
+            .linha-ranking { grid-template-columns: 34px 1fr auto; padding: 10px 12px; gap: 8px; }
+            .linha-ranking .avatar { display: none; }
+        }
+
         /* --- Grupos (campeonato + rodada/fase) --- */
         .grupo-titulo {
             grid-column: 1 / -1;
@@ -638,10 +677,21 @@
         <div class="abas" role="tablist">
             <button class="aba" id="aba-boloes" role="tab" aria-selected="true" aria-controls="lista">Bolões abertos</button>
             <button class="aba" id="aba-meus" role="tab" aria-selected="false" aria-controls="meus">Meus palpites<span class="contador" id="contador-meus" hidden></span></button>
+            <button class="aba" id="aba-ranking" role="tab" aria-selected="false" aria-controls="ranking"><i class="fas fa-ranking-star"></i> Ranking</button>
             <button class="aba" id="aba-resultados" role="tab" aria-selected="false" aria-controls="resultados" hidden>Resultados<span class="contador" id="contador-resultados" hidden></span></button>
         </div>
 
         <div class="filtros" id="filtros" role="toolbar" aria-label="Filtrar por campeonato" hidden></div>
+
+        <section id="ranking" role="tabpanel" aria-labelledby="aba-ranking" hidden>
+            <div class="criterios" role="group" aria-label="Ordenar ranking por">
+                <button type="button" class="criterio" data-criterio="saldo" aria-pressed="true">Saldo</button>
+                <button type="button" class="criterio" data-criterio="lucro" aria-pressed="false">Lucro</button>
+                <button type="button" class="criterio" data-criterio="acertos" aria-pressed="false">Acertos</button>
+            </div>
+            <p class="nota-ranking" id="nota-ranking"></p>
+            <ol class="lista-ranking" id="lista-ranking"><li class="carregando">Carregando ranking...</li></ol>
+        </section>
 
         <section id="resultados" role="tabpanel" aria-labelledby="aba-resultados" hidden>
             <div class="lista-palpites" id="lista-resultados"><p class="carregando">Carregando...</p></div>
@@ -915,15 +965,22 @@
     function renderizarFiltros() {
         const caixa = document.getElementById('filtros');
         if (abaAtual === 'resultados') { caixa.hidden = true; return; }
-        const base = abaAtual === 'meus' ? (meusDados || []) : boloesDados;
         const contagem = new Map();
-        for (const x of base) contagem.set(campDe(x), (contagem.get(campDe(x)) || 0) + 1);
+        let total = 0;
+        if (abaAtual === 'ranking') {
+            // no ranking, o número de cada filtro é de palpites já encerrados naquele campeonato
+            for (const [c, n] of Object.entries((rankingDados && rankingDados.campeonatos) || {})) { contagem.set(c, n); total += n; }
+        } else {
+            const base = abaAtual === 'meus' ? (meusDados || []) : boloesDados;
+            for (const x of base) contagem.set(campDe(x), (contagem.get(campDe(x)) || 0) + 1);
+            total = base.length;
+        }
         const nomes = [...contagem.keys()].sort((a, b) => (a === OUTROS) - (b === OUTROS) || contagem.get(b) - contagem.get(a) || a.localeCompare(b));
         if (filtro && !contagem.has(filtro)) nomes.push(filtro);  // mantém o filtro escolhido visível, com 0
         caixa.hidden = nomes.length <= 1 && !filtro;
         const chip = (valor, rotulo, qtd) =>
             `<button type="button" class="filtro" data-filtro="${esc(valor)}" aria-pressed="${filtro === valor}">${esc(rotulo)}<span class="qtd">${qtd}</span></button>`;
-        caixa.innerHTML = chip('', 'Todos', base.length) + nomes.map(n => chip(n, n, contagem.get(n) || 0)).join('');
+        caixa.innerHTML = chip('', 'Todos', total) + nomes.map(n => chip(n, n, contagem.get(n) || 0)).join('');
     }
 
     document.getElementById('filtros').addEventListener('click', e => {
@@ -933,7 +990,88 @@
         try { localStorage.setItem('kanvira_filtro', filtro); } catch (err) { /* ignora */ }
         renderizar(boloesDados, isAdmin);
         renderizarMeus();
+        renderizarRanking();
         renderizarFiltros();
+    });
+
+    // --- Ranking ---
+    let rankingDados = null, criterio = 'saldo', meuId = null;
+
+    async function carregarRanking() {
+        const alvo = document.getElementById('lista-ranking');
+        try {
+            const { ok, dados } = await api('/ranking');
+            if (!ok) throw new Error('falha');
+            rankingDados = dados;
+            renderizarRanking();
+            renderizarFiltros();
+        } catch (err) {
+            if (err.message !== 'sessão expirada') alvo.innerHTML = '<li class="vazio">Não foi possível carregar o ranking.</li>';
+        }
+    }
+
+    function renderizarRanking() {
+        if (!rankingDados) return;
+        const alvo = document.getElementById('lista-ranking');
+        // Saldo é sempre geral; com um campeonato filtrado, ordena por lucro
+        const crit = filtro && criterio === 'saldo' ? 'lucro' : criterio;
+        document.querySelectorAll('.criterio').forEach(b => {
+            b.setAttribute('aria-pressed', b.dataset.criterio === crit);
+            b.disabled = !!filtro && b.dataset.criterio === 'saldo';
+        });
+        const nota = {
+            saldo: 'Quem tem mais Jussana Coins agora.',
+            lucro: 'Quanto ganhou menos quanto apostou, só em jogos já encerrados.',
+            acertos: 'Placares exatos valem mais; empate é desfeito pelos resultados certos.',
+        }[crit];
+        document.getElementById('nota-ranking').textContent = (filtro ? `${filtro} · ` : '') + nota;
+
+        const stat = j => (filtro ? j.por_campeonato[filtro] : j.geral) || { palpites: 0, encerrados: 0, apostado: 0, recebido: 0, lucro: 0, acertos_placar: 0, acertos_resultado: 0 };
+        let lista = rankingDados.jogadores.map(j => ({ ...j, s: stat(j) }));
+        if (filtro) lista = lista.filter(j => j.s.palpites > 0);  // no filtro, só quem palpitou naquele campeonato
+        const chave = {
+            saldo: j => [j.saldo, j.s.lucro],
+            lucro: j => [j.s.lucro, j.s.acertos_placar],
+            acertos: j => [j.s.acertos_placar, j.s.acertos_resultado],
+        }[crit];
+        lista.sort((a, b) => {
+            const ka = chave(a), kb = chave(b);
+            return kb[0] - ka[0] || kb[1] - ka[1] || a.username.localeCompare(b.username);
+        });
+
+        if (!lista.length) {
+            alvo.innerHTML = `<li class="vazio"><i class="fas fa-ranking-star"></i> ${filtro ? `Ninguém palpitou em <strong>${esc(filtro)}</strong> ainda.` : 'Ainda não há jogadores no ranking.'}</li>`;
+            return;
+        }
+
+        const MEDALHAS = ['🥇', '🥈', '🥉'];
+        let posicao = 0, anterior = null;
+        alvo.innerHTML = lista.map((j, i) => {
+            const k = chave(j).join('|');
+            if (k !== anterior) { posicao = i + 1; anterior = k; }  // empatados dividem a posição
+            const s = j.s;
+            const lucroTxt = `${s.lucro > 0 ? '+' : ''}${fmtJC(s.lucro)} JC`;
+            const principal = {
+                saldo: `<strong>${fmtJC(j.saldo)} JC</strong><small>saldo</small>`,
+                lucro: `<strong class="${s.lucro > 0 ? 'pos-lucro' : s.lucro < 0 ? 'neg-lucro' : ''}">${lucroTxt}</strong><small>lucro</small>`,
+                acertos: `<strong>${s.acertos_placar} 🎯</strong><small>${s.acertos_resultado} resultado${s.acertos_resultado === 1 ? '' : 's'}</small>`,
+            }[crit];
+            const detalhes = `${s.palpites} palpite${s.palpites === 1 ? '' : 's'} · ${s.acertos_placar} placar${s.acertos_placar === 1 ? '' : 'es'} exato${s.acertos_placar === 1 ? '' : 's'}`
+                + (crit !== 'lucro' && s.encerrados ? ` · lucro ${lucroTxt}` : '');
+            return `<li class="linha-ranking ${j.id === meuId ? 'eu' : ''} ${posicao <= 3 ? 'top' + posicao : ''}">
+                <span class="pos">${posicao <= 3 ? MEDALHAS[posicao - 1] : posicao + 'º'}</span>
+                <span class="avatar" aria-hidden="true">${esc(j.username[0])}</span>
+                <span class="quem"><strong>${esc(j.username)}${j.id === meuId ? '<span class="voce">você</span>' : ''}</strong><small>${detalhes}</small></span>
+                <span class="valor">${principal}</span>
+            </li>`;
+        }).join('');
+    }
+
+    document.querySelector('.criterios').addEventListener('click', e => {
+        const b = e.target.closest('.criterio');
+        if (!b || b.disabled) return;
+        criterio = b.dataset.criterio;
+        renderizarRanking();
     });
 
     let boloesPorKey = {};
@@ -1075,6 +1213,8 @@
                   sub: 'Escolha o placar e quantas <strong>Jussana Coins</strong> quer arriscar. Pode palpitar mais de uma vez até o fechamento.' },
         meus: { botao: 'aba-meus', painel: 'meus', titulo: 'Meus palpites',
                 sub: 'Todos os palpites que você fez, com as ODDs travadas na hora da aposta.' },
+        ranking: { botao: 'aba-ranking', painel: 'ranking', titulo: 'Ranking',
+                   sub: 'Quem manda no bolão. Admins não entram na disputa.' },
         resultados: { botao: 'aba-resultados', painel: 'resultados', titulo: 'Resultados',
                       sub: 'Lance o placar dos jogos que já fecharam. O prêmio de cada palpite vai direto para o saldo.' },
     };
@@ -1091,11 +1231,13 @@
         document.getElementById('sub-aba').innerHTML = ABAS[qual].sub;
         if (qual === 'meus' && !meusCarregados) carregarMeus();
         if (qual === 'resultados') carregarResultados();
+        if (qual === 'ranking') carregarRanking();
         try { history.replaceState(null, '', qual === 'boloes' ? '#' : `#${qual}`); } catch (e) { /* ignora */ }
     }
     abaBoloes.addEventListener('click', () => mostrarAba('boloes'));
     abaMeus.addEventListener('click', () => mostrarAba('meus'));
     document.getElementById('aba-resultados').addEventListener('click', () => mostrarAba('resultados'));
+    document.getElementById('aba-ranking').addEventListener('click', () => mostrarAba('ranking'));
 
     function atualizarContador(soma = 0) {
         if (totalMeus === null) return;
@@ -1287,6 +1429,7 @@
             const { ok, dados: usuario } = await api('/auth/me');
             if (!ok) throw new Error('falha no perfil');
             isAdmin = usuario.is_admin;
+            meuId = usuario.id;
             document.getElementById('nome-usuario').textContent = usuario.username;
             document.getElementById('link-admin').hidden = !isAdmin;
             document.getElementById('link-contas').hidden = !isAdmin;
@@ -1294,7 +1437,7 @@
             atualizarSaldo(usuario.saldo);
             await carregarBoloes();
             const abaLink = location.hash.slice(1);
-            if (abaLink === 'meus' || abaLink === 'resultados') mostrarAba(abaLink);
+            if (['meus', 'resultados', 'ranking'].includes(abaLink)) mostrarAba(abaLink);
             if (abaLink !== 'meus') carregarMeus();
             if (isAdmin && abaLink !== 'resultados') carregarResultados();  // só para o contador da aba
         } catch (err) {

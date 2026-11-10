@@ -285,6 +285,31 @@ class ResultadoLote(BaseModel):
     erro: Optional[str] = None
 
 
+# --- Ranking ---
+class EstatisticaRanking(BaseModel):
+    """Números de um jogador (no geral ou em um campeonato)."""
+    palpites: int = 0            # todos os palpites
+    encerrados: int = 0          # palpites de jogos que já têm resultado
+    apostado: int = 0            # JC apostadas nos jogos encerrados
+    recebido: int = 0            # JC recebidas nos jogos encerrados
+    lucro: int = 0               # recebido - apostado
+    acertos_placar: int = 0
+    acertos_resultado: int = 0
+
+
+class JogadorRanking(BaseModel):
+    id: int
+    username: str
+    saldo: int
+    geral: EstatisticaRanking
+    por_campeonato: dict[str, EstatisticaRanking] = {}
+
+
+class Ranking(BaseModel):
+    jogadores: List[JogadorRanking]
+    campeonatos: dict[str, int]  # campeonato -> palpites já encerrados (para os filtros)
+
+
 # --- Gestão de contas (admin) ---
 class ContaAdmin(BaseModel):
     id: int
