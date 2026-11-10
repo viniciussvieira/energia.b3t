@@ -260,6 +260,14 @@ class OddsSugeridas(BaseModel):
     time_b: Optional[TimeTabela] = None
 
 
+class ResultadoLote(BaseModel):
+    """Resultado de cada jogo na criação em lote."""
+    espn_id: Optional[str] = None
+    ok: bool
+    issue_key: Optional[str] = None
+    erro: Optional[str] = None
+
+
 # --- Gestão de contas (admin) ---
 class ContaAdmin(BaseModel):
     id: int

@@ -402,20 +402,62 @@
         .importar .btn { width: auto; padding: 10px 16px; }
         .lista-jogos { list-style: none; display: flex; flex-direction: column; gap: 6px; max-height: 380px; overflow-y: auto; }
         .lista-jogos li {
-            display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; align-items: center;
+            display: grid; grid-template-columns: auto 1fr auto; gap: 4px 10px; align-items: center;
             background: var(--bg-primary); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px;
         }
         .lista-jogos .jogo-times { display: flex; align-items: center; gap: 8px; font-weight: 600; min-width: 0; flex-wrap: wrap; }
         .lista-jogos .jogo-times img, .lista-jogos .jogo-times .mini-vazio { width: 24px; height: 24px; object-fit: contain; flex-shrink: 0; }
         .lista-jogos .jogo-times .mini-vazio { display: inline-flex; align-items: center; justify-content: center; color: var(--border); }
-        .lista-jogos .jogo-quando { grid-column: 1; color: var(--text-muted); font-size: 0.82em; }
+        .lista-jogos .jogo-quando { grid-column: 2; color: var(--text-muted); font-size: 0.82em; }
+        .lista-jogos .jogo-times { grid-column: 2; }
+        .lista-jogos .marcar { grid-row: 1 / span 2; grid-column: 1; width: 18px; height: 18px; accent-color: var(--accent); cursor: pointer; }
+        .lista-jogos .marcar:disabled { cursor: not-allowed; opacity: 0.3; }
+        .lista-jogos li.selecionado { border-color: var(--accent); background: rgba(88, 166, 255, 0.06); }
+        .barra-lote { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; font-size: 0.88em; }
+        .barra-lote label { display: flex; align-items: center; gap: 8px; color: var(--text-muted); cursor: pointer; }
+        .barra-lote input { width: 18px; height: 18px; accent-color: var(--accent); }
+        .barra-lote .btn { width: auto; padding: 8px 14px; font-size: 0.9em; }
+
+        /* --- Revisão em lote --- */
+        .lote { max-width: 640px; margin: 0 auto 22px; gap: 14px; }
+        .lote h2 { font-size: 1.05em; display: flex; align-items: center; gap: 8px; }
+        .lote h2 i { color: var(--accent); }
+        .lote-item {
+            background: var(--bg-primary); border: 1px solid var(--border); border-radius: 10px;
+            padding: 12px; display: flex; flex-direction: column; gap: 8px;
+        }
+        .lote-item.criado { border-color: rgba(63, 185, 80, 0.5); }
+        .lote-item.falhou { border-color: rgba(248, 81, 73, 0.5); }
+        .lote-topo { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+        .lote-topo .jogo-times { display: flex; align-items: center; gap: 8px; font-weight: 600; flex-wrap: wrap; }
+        .lote-topo img, .lote-topo .mini-vazio { width: 22px; height: 22px; object-fit: contain; }
+        .lote-topo small { color: var(--text-muted); font-weight: 400; }
+        .lote-topo .tirar { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 1em; padding: 2px 6px; }
+        .lote-topo .tirar:hover { color: var(--error); }
+        .lote-odds { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+        .lote-odds label { display: flex; flex-direction: column; gap: 2px; font-size: 0.72em; color: var(--text-muted); min-width: 0; }
+        .lote-odds label span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .lote-odds input {
+            width: 100%; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 6px;
+            padding: 7px 4px; color: var(--text-main); font-weight: 700; text-align: center; font-size: 1.1em;
+        }
+        .lote-odds input:focus { outline: none; border-color: var(--accent); }
+        .lote-info { font-size: 0.78em; color: var(--text-muted); }
+        .lote-info.ok { color: var(--success); font-weight: 600; font-size: 0.88em; }
+        .lote-info.erro { color: var(--error); font-weight: 600; font-size: 0.88em; }
+        .lote .linha-botoes { display: flex; gap: 8px; }
+        .lote .linha-botoes .btn { flex: 1; }
+        .btn-secundario {
+            background: transparent; border: 1px solid var(--border); color: var(--text-main);
+            border-radius: 8px; padding: 10px 14px; cursor: pointer; font-weight: 600;
+        }
         .lista-jogos .usar {
-            grid-row: 1 / span 2; grid-column: 2;
+            grid-row: 1 / span 2; grid-column: 3;
             background: transparent; border: 1px solid var(--accent); color: var(--accent);
             border-radius: 8px; padding: 6px 12px; font-weight: 600; cursor: pointer; font-size: 0.85em;
         }
         .lista-jogos .usar:hover { background: rgba(88, 166, 255, 0.12); }
-        .lista-jogos .ja { grid-row: 1 / span 2; grid-column: 2; color: var(--text-muted); font-size: 0.8em; text-align: right; }
+        .lista-jogos .ja { grid-row: 1 / span 2; grid-column: 3; color: var(--text-muted); font-size: 0.8em; text-align: right; }
         .lista-jogos li.info { display: block; color: var(--text-muted); font-size: 0.9em; text-align: center; }
         .importado {
             display: flex; align-items: center; gap: 8px; justify-content: space-between;
@@ -500,7 +542,22 @@
                 </select>
                 <button type="button" class="btn" id="btn-buscar-jogos"><i class="fas fa-magnifying-glass"></i> Buscar</button>
             </div>
+            <div class="barra-lote" id="barra-lote" hidden>
+                <label><input type="checkbox" id="marcar-todos"> Selecionar todos</label>
+                <button type="button" class="btn" id="btn-preparar" disabled><i class="fas fa-layer-group"></i> Preparar selecionados (0)</button>
+            </div>
             <ul class="lista-jogos" id="lista-jogos" hidden></ul>
+        </section>
+
+        <section class="form-card lote" id="lote" hidden>
+            <h2><i class="fas fa-layer-group"></i> Criar em lote <span id="lote-qtd"></span></h2>
+            <p class="hint" style="margin-top:-8px">As ODDs já vêm sugeridas pela tabela do campeonato. Confira, ajuste o que quiser e crie todos de uma vez.</p>
+            <div id="lote-lista" style="display:flex;flex-direction:column;gap:10px"></div>
+            <div class="linha-botoes">
+                <button type="button" class="btn-secundario" id="lote-cancelar">Cancelar</button>
+                <button type="button" class="btn" id="lote-criar"><i class="fas fa-check-double"></i> Criar bolões</button>
+            </div>
+            <p class="status" id="lote-status" role="status"></p>
         </section>
 
         <form class="form-card" id="formBolao" novalidate hidden>
@@ -702,13 +759,17 @@
             jogosEncontrados = dados;
             listaJogos.innerHTML = dados.length ? dados.map((j, i) => {
                 const quando = dataUTC(j.data).toLocaleString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
-                return `<li>
+                return `<li data-i="${i}">
+                    <input type="checkbox" class="marcar" data-i="${i}" ${j.ja_importado ? 'disabled title="Já tem bolão"' : ''} aria-label="Selecionar ${escTexto(j.time_a)} x ${escTexto(j.time_b)}">
                     <span class="jogo-times">${mini(j.escudo_a)}${escTexto(j.time_a)} <span style="color:var(--text-muted)">x</span> ${escTexto(j.time_b)}${mini(j.escudo_b)}</span>
                     <span class="jogo-quando">${quando} · ${escTexto(j.liga_nome)}</span>
                     ${j.ja_importado ? `<span class="ja">Já tem bolão<br><b>${escTexto(j.ja_importado)}</b></span>`
                                      : `<button type="button" class="usar" data-i="${i}">Usar</button>`}
                 </li>`;
             }).join('') : '<li class="info">Nenhum jogo encontrado nesse período. Tente outro campeonato ou um período maior.</li>';
+            document.getElementById('barra-lote').hidden = !dados.some(j => !j.ja_importado);
+            document.getElementById('marcar-todos').checked = false;
+            atualizarSelecao();
         } catch (err) {
             if (err.message !== 'sessão expirada') listaJogos.innerHTML = '<li class="info">Não foi possível buscar agora. Você pode criar o bolão na mão abaixo.</li>';
         }
@@ -767,6 +828,148 @@
 
     document.getElementById('btn-buscar-jogos').addEventListener('click', buscarJogos);
     document.getElementById('desfazer-import').addEventListener('click', desvincular);
+    // --- Seleção em massa ---
+    function selecionados() {
+        return [...listaJogos.querySelectorAll('.marcar:checked')].map(c => jogosEncontrados[+c.dataset.i]);
+    }
+
+    function atualizarSelecao() {
+        const n = selecionados().length;
+        const b = document.getElementById('btn-preparar');
+        b.disabled = n === 0;
+        b.innerHTML = `<i class="fas fa-layer-group"></i> Preparar selecionados (${n})`;
+        listaJogos.querySelectorAll('li[data-i]').forEach(li => li.classList.toggle('selecionado', !!li.querySelector('.marcar:checked')));
+        const livres = listaJogos.querySelectorAll('.marcar:not(:disabled)');
+        document.getElementById('marcar-todos').checked = livres.length > 0 && n === livres.length;
+    }
+
+    listaJogos.addEventListener('change', e => { if (e.target.classList.contains('marcar')) atualizarSelecao(); });
+    document.getElementById('marcar-todos').addEventListener('change', e => {
+        listaJogos.querySelectorAll('.marcar:not(:disabled)').forEach(c => { c.checked = e.target.checked; });
+        atualizarSelecao();
+    });
+
+    let loteJogos = [];
+    const lote = document.getElementById('lote');
+    const loteLista = document.getElementById('lote-lista');
+    const loteStatus = (t, tipo = '') => { const el = document.getElementById('lote-status'); el.textContent = t; el.className = 'status ' + tipo; };
+
+    function htmlLoteItem(j, i) {
+        const quando = dataUTC(j.data).toLocaleString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+        const campo = (nome, rotulo) => `<label><span title="${escTexto(rotulo)}">${escTexto(rotulo)}</span>
+            <input type="number" name="${nome}" min="1.01" step="0.01" inputmode="decimal" placeholder="..." aria-label="${escTexto(rotulo)} ${escTexto(j.time_a)} x ${escTexto(j.time_b)}"></label>`;
+        return `<div class="lote-item" data-i="${i}">
+            <div class="lote-topo">
+                <span class="jogo-times">${mini(j.escudo_a)}${escTexto(j.time_a)} x ${escTexto(j.time_b)}${mini(j.escudo_b)} <small>${quando}</small></span>
+                <button type="button" class="tirar" title="Tirar da lista" aria-label="Tirar da lista">✕</button>
+            </div>
+            <div class="lote-odds">
+                ${campo('odd_casa', j.time_a)}${campo('odd_empate', 'Empate')}${campo('odd_fora', j.time_b)}${campo('odd_placar', 'Placar exato')}
+            </div>
+            <span class="lote-info">Calculando ODDs...</span>
+        </div>`;
+    }
+
+    function atualizarQtdLote() {
+        const n = loteLista.querySelectorAll('.lote-item:not(.criado)').length;
+        document.getElementById('lote-qtd').textContent = `(${n} jogo${n === 1 ? '' : 's'})`;
+        const b = document.getElementById('lote-criar');
+        b.innerHTML = `<i class="fas fa-check-double"></i> Criar ${n} bol${n === 1 ? 'ão' : 'ões'}`;
+        b.disabled = n === 0;
+    }
+
+    async function prepararLote() {
+        loteJogos = selecionados();
+        if (!loteJogos.length) return;
+        loteLista.innerHTML = loteJogos.map(htmlLoteItem).join('');
+        lote.hidden = false;
+        loteStatus('');
+        atualizarQtdLote();
+        lote.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+        // Sugere as ODDs de todos os jogos ao mesmo tempo
+        await Promise.all(loteJogos.map(async (j, i) => {
+            const item = loteLista.querySelector(`.lote-item[data-i="${i}"]`);
+            const info = item.querySelector('.lote-info');
+            try {
+                const { ok, dados: s } = await api(`/admin/odds-sugeridas?liga=${encodeURIComponent(j.liga)}&time_a_id=${idDoEscudo(j.escudo_a)}&time_b_id=${idDoEscudo(j.escudo_b)}`);
+                if (!ok) throw new Error();
+                for (const k of ['odd_casa', 'odd_empate', 'odd_fora', 'odd_placar']) {
+                    const inp = item.querySelector(`[name="${k}"]`);
+                    if (!inp.value) inp.value = s[k].toFixed(2);  // não apaga o que você já digitou
+                }
+                info.textContent = `Chances: ${s.prob_casa}% · empate ${s.prob_empate}% · ${s.prob_fora}% · placar mais provável ${s.placar_provavel}`
+                    + (!s.time_a || !s.time_b ? ' · (algum time sem dados na tabela)' : '');
+            } catch (err) {
+                info.textContent = 'Não foi possível sugerir: preencha as ODDs na mão.';
+            }
+        }));
+    }
+
+    document.getElementById('btn-preparar').addEventListener('click', prepararLote);
+    document.getElementById('lote-cancelar').addEventListener('click', () => { lote.hidden = true; loteLista.innerHTML = ''; });
+    loteLista.addEventListener('click', e => {
+        const t = e.target.closest('.tirar');
+        if (!t) return;
+        t.closest('.lote-item').remove();
+        atualizarQtdLote();
+        if (!loteLista.querySelector('.lote-item')) lote.hidden = true;
+    });
+
+    document.getElementById('lote-criar').addEventListener('click', async () => {
+        const itens = [...loteLista.querySelectorAll('.lote-item:not(.criado)')];
+        const enviar = [];
+        for (const item of itens) {
+            const j = loteJogos[+item.dataset.i];
+            const odds = {};
+            for (const k of ['odd_casa', 'odd_empate', 'odd_fora', 'odd_placar']) {
+                const v = parseFloat(String(item.querySelector(`[name="${k}"]`).value).replace(',', '.'));
+                if (!(v >= 1.01)) {
+                    item.querySelector(`[name="${k}"]`).focus();
+                    return loteStatus(`Preencha as 4 ODDs de ${j.time_a} x ${j.time_b} (mínimo 1.01).`, 'error');
+                }
+                odds[k] = Math.round(v * 100) / 100;
+            }
+            enviar.push({
+                time_a: j.time_a, time_b: j.time_b, escudo_a: j.escudo_a, escudo_b: j.escudo_b,
+                ...odds, data_encerramento: dataUTC(j.data).toISOString(),
+                espn_id: j.espn_id, espn_liga: j.liga,
+            });
+        }
+        if (!enviar.length) return;
+
+        const botao = document.getElementById('lote-criar');
+        botao.disabled = true;
+        loteStatus(`Criando ${enviar.length} bolões...`);
+        try {
+            const { ok, dados } = await api('/tickets/bolao/lote', { method: 'POST', body: JSON.stringify(enviar) });
+            if (!ok) throw new Error(typeof dados.detail === 'string' ? dados.detail : 'falha');
+            let criados = 0;
+            dados.forEach((r, n) => {
+                const item = itens[n];
+                const info = item.querySelector('.lote-info');
+                if (r.ok) {
+                    criados++;
+                    item.classList.add('criado');
+                    item.querySelectorAll('input').forEach(inp => { inp.disabled = true; });
+                    info.className = 'lote-info ok';
+                    info.innerHTML = `<i class="fas fa-check"></i> Criado: ${escTexto(r.issue_key)}`;
+                } else {
+                    item.classList.add('falhou');
+                    info.className = 'lote-info erro';
+                    info.innerHTML = `<i class="fas fa-xmark"></i> ${escTexto(r.erro || 'Não foi possível criar.')}`;
+                }
+            });
+            const falhas = dados.length - criados;
+            loteStatus(`${criados} bol${criados === 1 ? 'ão criado' : 'ões criados'}` + (falhas ? ` · ${falhas} com problema (veja acima)` : '!'), falhas ? 'error' : 'success');
+            atualizarQtdLote();
+            buscarJogos();  // atualiza a lista com "Já tem bolão"
+        } catch (err) {
+            if (err.message !== 'sessão expirada') loteStatus(err.message && err.message !== 'falha' ? err.message : 'Erro ao criar. Nada foi perdido: tente de novo.', 'error');
+            botao.disabled = false;
+        }
+    });
+
     listaJogos.addEventListener('click', e => {
         const b = e.target.closest('.usar');
         if (b) usarJogo(jogosEncontrados[+b.dataset.i]);

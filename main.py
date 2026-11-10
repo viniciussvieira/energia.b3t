@@ -3,7 +3,8 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from typing import List, Optional
 
-from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi import Body, Depends, FastAPI, HTTPException, status
+from pydantic import ValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import case, func, inspect, text
 from sqlalchemy.orm import Session
@@ -217,7 +218,11 @@ def criar_ticket_bolao(
 ):
     if not usuario.is_admin:
         raise HTTPException(status_code=403, detail="Só o administrador pode criar cards de bolão.")
+    return _criar_bolao(db, bolao)
 
+
+def _criar_bolao(db: Session, bolao: schemas.BolaoCreate) -> models.BolaoIssue:
+    """Cria um bolão (usado na criação de um só e na criação em lote)."""
     # Jogo importado da ESPN: confere o campeonato e evita criar o mesmo jogo duas vezes
     if bolao.espn_id:
         if bolao.espn_liga not in LIGAS:
@@ -251,7 +256,32 @@ def criar_ticket_bolao(
         return novo_ticket
     except Exception:
         db.rollback()
-        raise HTTPException(status_code=500, detail="Erro interno ao salvar o ticket no Kanvira.")
+        raise HTTPException(status_code=500, detail="Erro interno ao salvar o bolão.")
+
+
+@app.post("/api/v1/tickets/bolao/lote", response_model=List[schemas.ResultadoLote])
+def criar_boloes_em_lote(
+    itens: List[dict] = Body(...),
+    db: Session = Depends(get_db),
+    admin: models.Usuario = Depends(admin_atual),
+):
+    """Cria vários bolões de uma vez. Cada jogo é validado e criado separadamente:
+    se um falhar (ex: já começou ou já tem bolão), os outros são criados normalmente."""
+    if len(itens) > 40:
+        raise HTTPException(status_code=400, detail="Máximo de 40 jogos por vez.")
+    resultados = []
+    for item in itens:
+        espn_id = str(item.get("espn_id") or "") or None
+        try:
+            dados = schemas.BolaoCreate.model_validate(item)
+            novo = _criar_bolao(db, dados)
+            resultados.append({"espn_id": espn_id, "ok": True, "issue_key": novo.issue_key})
+        except ValidationError as e:
+            msg = e.errors()[0].get("msg", "Dados inválidos.") if e.errors() else "Dados inválidos."
+            resultados.append({"espn_id": espn_id, "ok": False, "erro": msg.replace("Value error, ", "")})
+        except HTTPException as e:
+            resultados.append({"espn_id": espn_id, "ok": False, "erro": str(e.detail)})
+    return resultados
 
 
 def odd_do_resultado(bolao: models.BolaoIssue, gols_a: int, gols_b: int) -> float:
